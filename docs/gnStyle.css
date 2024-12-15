@@ -1,0 +1,58 @@
+body {
+    font-size: 16px; /* ベースのフォントサイズ */
+    font-family: Arial, sans-serif;
+    line-height: 1.6; /* 行間を広げる */
+  }
+
+  /* PC向けのレイアウト */
+  .container {
+    display: flex;
+  }
+  .sidebar {
+    flex: 1;
+    background-color: #f0f0f0;
+    min-height: 100px; /* 最低限の高さを確保 */
+    overflow-y: auto; /* 縦スクロールを許可 */
+    max-height: 300px; /* 高さを制限 */
+  }
+  .content {
+    flex: 3;
+    background-color: #e0e0e0;
+  }
+  footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #f1f1f1;
+    text-align: center;
+    padding: 10px;
+  }
+  
+
+  /* タブレット向け（幅768px以下） */
+  @media (max-width: 768px) {
+    body {
+        font-size: 14px;
+      }
+    .container {
+      flex-direction: column; /* 縦並びに変更 */
+    }
+    .sidebar {
+      background-color: #d0d0d0; /* 色も変える */
+    }
+  }
+
+  /* スマホ向け（幅480px以下） */
+  @media (max-width: 480px) {
+    body {
+        font-size: 12px;
+      }
+    .content {
+      font-size: 14px;
+      padding: 10px; /* 内側の余白を設定 */
+    }
+    .sidebar {
+      padding: 5px; /* サイドバーの余白も調整 */
+    }
+  }
+  
