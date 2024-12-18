@@ -51,7 +51,7 @@
                 const status = document.getElementById('status');
               
                 // カメラ映像を取得
-                navigator.mediaDevices.getUserMedia({ video: true })
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }) // 外カメラ指定
                   .then(function (stream) {
                     video.srcObject = stream;
                   })
