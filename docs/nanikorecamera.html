@@ -47,20 +47,22 @@
             <p id="status">モデルを読み込んでいます...</p>
         
             <script>
-
                 const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d'); // Canvasの描画コンテキスト
                 const status = document.getElementById('status');
                 const switchCameraButton = document.getElementById('switchCamera');
                 let currentFacingMode = "environment"; // 初期設定は外カメラ
 
                 // カメラを開始する関数
                 function startCamera(facingMode) {
-                    navigator.mediaDevices.getUserMedia({ video: { facingMode } }) // カメラ指定
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode } })
                         .then(function (stream) {
                             video.srcObject = stream;
                         })
                         .catch(function (error) {
                             console.error('カメラの映像の取得に失敗しました:', error);
+                            status.textContent = 'カメラの起動に失敗しました: ' + error.message;
                         });
                 }
 
@@ -73,32 +75,41 @@
                 // 初期状態で外カメラを起動
                 startCamera(currentFacingMode);
 
-        
-                // COCO-SSDモデルをロードして物体検出を開始
-                cocoSsd.load().then(model => {
-                    status.textContent = 'モデルが読み込まれました！';
-                    
-                    function detectObjects() {
-                        model.detect(video).then(predictions => {
-                            context.clearRect(0, 0, canvas.width, canvas.height);
-                            predictions.forEach(prediction => {
-                                context.beginPath();
-                                context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
-                                context.lineWidth = 5;
-                                context.strokeStyle = 'red';
-                                context.fillStyle = 'red';
-                                context.stroke();
-                                context.font = '20px Arial'; 
-                                context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
+                // videoが読み込まれたら物体検出を開始
+                video.addEventListener('loadeddata', () => {
+                    cocoSsd.load().then(model => {
+                        status.textContent = 'モデルが読み込まれました！';
+
+                        function detectObjects() {
+                            model.detect(video).then(predictions => {
+                                console.log('検出結果:', predictions); // デバッグ用
+                                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                                predictions.forEach(prediction => {
+                                    // バウンディングボックスを描画
+                                    context.beginPath();
+                                    context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
+                                    context.lineWidth = 5;
+                                    context.strokeStyle = 'red';
+                                    context.fillStyle = 'red';
+                                    context.stroke();
+
+                                    // ラベルを描画
+                                    context.font = '20px Arial';
+                                    context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
+                                });
+                            }).catch(error => {
+                                console.error('物体検出エラー:', error);
                             });
-                        });
-                        requestAnimationFrame(detectObjects);
-                    }
-                    detectObjects();
-                }).catch(error => {
-                    status.textContent = 'モデルの読み込みに失敗しました';
-                    console.error('モデルのロードエラー:', error);
+                            requestAnimationFrame(detectObjects);
+                        }
+                        detectObjects();
+                    }).catch(error => {
+                        status.textContent = 'モデルの読み込みに失敗しました';
+                        console.error('モデルのロードエラー:', error);
+                    });
                 });
+
             </script>
               
               <p>このプロジェクトは、TensorFlow.jsとCOCO-SSDモデル（Apache 2.0ライセンス）を使用しています。</p>
