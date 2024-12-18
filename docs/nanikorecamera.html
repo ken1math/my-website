@@ -37,7 +37,6 @@
             <h2>なにこれカメラ</h2>
             <p>作成中</p>
 
-            <select id="cameraSelect"></select> <!-- カメラ選択用のドロップダウンメニュー -->
             <button id="switchCamera">カメラ切り替え</button>
             
             <div style="position: relative; width: 640px; height: 480px;">
@@ -48,56 +47,32 @@
             <p id="status">モデルを読み込んでいます...</p>
         
             <script>
+
                 const video = document.getElementById('video');
-                const canvas = document.getElementById('canvas');
-                const context = canvas.getContext('2d');
                 const status = document.getElementById('status');
-                const cameraSelect = document.getElementById('cameraSelect');
                 const switchCameraButton = document.getElementById('switchCamera');
-                
-                let currentStream = null; // 現在のストリームを保持
-        
-                // 使用可能なカメラデバイスを取得
-                navigator.mediaDevices.enumerateDevices().then(devices => {
-                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                    videoDevices.forEach((device, index) => {
-                        const option = document.createElement('option');
-                        option.value = device.deviceId;
-                        option.text = device.label || `カメラ ${index + 1}`;
-                        cameraSelect.appendChild(option);
-                    });
-                });
-        
-                // 選択されたカメラでストリームを開始
-                function startStream(deviceId) {
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop()); // 既存のストリームを停止
-                    }
-        
-                    const constraints = {
-                        video: {
-                            deviceId: deviceId ? { exact: deviceId } : undefined,
-                        }
-                    };
-        
-                    navigator.mediaDevices.getUserMedia(constraints)
-                        .then(stream => {
-                            currentStream = stream; // 現在のストリームを保存
+                let currentFacingMode = "environment"; // 初期設定は外カメラ
+
+                // カメラを開始する関数
+                function startCamera(facingMode) {
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode } }) // カメラ指定
+                        .then(function (stream) {
                             video.srcObject = stream;
                         })
-                        .catch(error => {
-                            console.error('カメラの映像を取得できませんでした:', error);
+                        .catch(function (error) {
+                            console.error('カメラの映像の取得に失敗しました:', error);
                         });
                 }
-        
-                // 初期カメラストリームを開始
-                startStream();
-        
-                // カメラ切り替えボタンのイベント
+
+                // ボタンでカメラを切り替える処理
                 switchCameraButton.addEventListener('click', () => {
-                    const selectedCameraId = cameraSelect.value;
-                    startStream(selectedCameraId);
+                    currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+                    startCamera(currentFacingMode);
                 });
+
+                // 初期状態で外カメラを起動
+                startCamera(currentFacingMode);
+
         
                 // COCO-SSDモデルをロードして物体検出を開始
                 cocoSsd.load().then(model => {
