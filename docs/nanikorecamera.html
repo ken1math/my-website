@@ -109,10 +109,11 @@
                             predictions.forEach(prediction => {
                                 context.beginPath();
                                 context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
-                                context.lineWidth = 2;
+                                context.lineWidth = 5;
                                 context.strokeStyle = 'red';
                                 context.fillStyle = 'red';
                                 context.stroke();
+                                context.font = '20px Arial'; 
                                 context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
                             });
                         });
