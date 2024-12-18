@@ -6,12 +6,17 @@
     <link rel="stylesheet" href="gnStyle.css?v=1">
     <title>なにこれカメラ</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
 </head>
 <body>
     <!-- ヘッダー -->
     <header>
         <h1>Welcome to My Website!</h1>
         <p>This is my first GitHub Pages site.</p>
+        <a href="index.html">トップページ</a>
+        <br>
     </header>
 
     <!-- メインコンテナ -->
@@ -31,6 +36,58 @@
         <main class="content">
             <h2>なにこれカメラ</h2>
             <p>作成中</p>
+
+            <div style="position: relative; width: 640px; height: 480px;">
+                <video id="video" width="640" height="480" autoplay style="position: absolute; top: 0; left: 0; z-index: 1;"></video>
+                <canvas id="canvas" width="640" height="480" style="position: absolute; top: 0; left: 0; z-index: 2;"></canvas>
+              </div>
+              
+              <p id="status">モデルを読み込んでいます...</p>
+              
+              <script>
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+                const status = document.getElementById('status');
+              
+                // カメラ映像を取得
+                navigator.mediaDevices.getUserMedia({ video: true })
+                  .then(function (stream) {
+                    video.srcObject = stream;
+                  })
+                  .catch(function (error) {
+                    console.error('カメラの映像の取得に失敗しました:', error);
+                  });
+              
+                // COCO-SSDモデルをロード
+                cocoSsd.load().then(model => {
+                  status.textContent = 'モデルが読み込まれました！';
+              
+                  // 物体認識のループ処理
+                  function detectObjects() {
+                    model.detect(video).then(predictions => {
+                      context.clearRect(0, 0, canvas.width, canvas.height);
+              
+                      // 予測された物体を描画
+                      predictions.forEach(prediction => {
+                        context.beginPath();
+                        context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
+                        context.lineWidth = 2;
+                        context.strokeStyle = 'red';
+                        context.fillStyle = 'red';
+                        context.stroke();
+                        context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
+                      });
+                    });
+                    requestAnimationFrame(detectObjects);
+                  }
+                  detectObjects();
+                }).catch(error => {
+                  status.textContent = 'モデルの読み込みに失敗しました';
+                  console.error('モデルのロードエラー:', error);
+                });
+              </script>
+              
 
         </main>
     </div>
