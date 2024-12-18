@@ -16,7 +16,7 @@
         <h1>Welcome to My Website!</h1>
         <p>This is my first GitHub Pages site.</p>
         <a href="index.html">トップページ</a>
-        <br>
+
     </header>
 
     <!-- メインコンテナ -->
@@ -37,56 +37,93 @@
             <h2>なにこれカメラ</h2>
             <p>作成中</p>
 
+            <select id="cameraSelect"></select> <!-- カメラ選択用のドロップダウンメニュー -->
+            <button id="switchCamera">カメラ切り替え</button>
+            
             <div style="position: relative; width: 640px; height: 480px;">
-                <video id="video" width="640" height="480" autoplay style="position: absolute; top: 0; left: 0; z-index: 1;"></video>
+                <video id="video" width="640" height="480" autoplay playsinline style="position: absolute; top: 0; left: 0; z-index: 1;"></video>
                 <canvas id="canvas" width="640" height="480" style="position: absolute; top: 0; left: 0; z-index: 2;"></canvas>
-              </div>
-              
-              <p id="status">モデルを読み込んでいます...</p>
-              
-              <script>
+            </div>
+            
+            <p id="status">モデルを読み込んでいます...</p>
+        
+            <script>
                 const video = document.getElementById('video');
                 const canvas = document.getElementById('canvas');
                 const context = canvas.getContext('2d');
                 const status = document.getElementById('status');
-              
-                // カメラ映像を取得
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }) // 外カメラ指定
-                  .then(function (stream) {
-                    video.srcObject = stream;
-                  })
-                  .catch(function (error) {
-                    console.error('カメラの映像の取得に失敗しました:', error);
-                  });
-              
-                // COCO-SSDモデルをロード
-                cocoSsd.load().then(model => {
-                  status.textContent = 'モデルが読み込まれました！';
-              
-                  // 物体認識のループ処理
-                  function detectObjects() {
-                    model.detect(video).then(predictions => {
-                      context.clearRect(0, 0, canvas.width, canvas.height);
-              
-                      // 予測された物体を描画
-                      predictions.forEach(prediction => {
-                        context.beginPath();
-                        context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
-                        context.lineWidth = 2;
-                        context.strokeStyle = 'red';
-                        context.fillStyle = 'red';
-                        context.stroke();
-                        context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
-                      });
+                const cameraSelect = document.getElementById('cameraSelect');
+                const switchCameraButton = document.getElementById('switchCamera');
+                
+                let currentStream = null; // 現在のストリームを保持
+        
+                // 使用可能なカメラデバイスを取得
+                navigator.mediaDevices.enumerateDevices().then(devices => {
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    videoDevices.forEach((device, index) => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.text = device.label || `カメラ ${index + 1}`;
+                        cameraSelect.appendChild(option);
                     });
-                    requestAnimationFrame(detectObjects);
-                  }
-                  detectObjects();
-                }).catch(error => {
-                  status.textContent = 'モデルの読み込みに失敗しました';
-                  console.error('モデルのロードエラー:', error);
                 });
-              </script>
+        
+                // 選択されたカメラでストリームを開始
+                function startStream(deviceId) {
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop()); // 既存のストリームを停止
+                    }
+        
+                    const constraints = {
+                        video: {
+                            deviceId: deviceId ? { exact: deviceId } : undefined,
+                        }
+                    };
+        
+                    navigator.mediaDevices.getUserMedia(constraints)
+                        .then(stream => {
+                            currentStream = stream; // 現在のストリームを保存
+                            video.srcObject = stream;
+                        })
+                        .catch(error => {
+                            console.error('カメラの映像を取得できませんでした:', error);
+                        });
+                }
+        
+                // 初期カメラストリームを開始
+                startStream();
+        
+                // カメラ切り替えボタンのイベント
+                switchCameraButton.addEventListener('click', () => {
+                    const selectedCameraId = cameraSelect.value;
+                    startStream(selectedCameraId);
+                });
+        
+                // COCO-SSDモデルをロードして物体検出を開始
+                cocoSsd.load().then(model => {
+                    status.textContent = 'モデルが読み込まれました！';
+                    
+                    function detectObjects() {
+                        model.detect(video).then(predictions => {
+                            context.clearRect(0, 0, canvas.width, canvas.height);
+                            predictions.forEach(prediction => {
+                                context.beginPath();
+                                context.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
+                                context.lineWidth = 2;
+                                context.strokeStyle = 'red';
+                                context.fillStyle = 'red';
+                                context.stroke();
+                                context.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10);
+                            });
+                        });
+                        requestAnimationFrame(detectObjects);
+                    }
+                    detectObjects();
+                }).catch(error => {
+                    status.textContent = 'モデルの読み込みに失敗しました';
+                    console.error('モデルのロードエラー:', error);
+                });
+            </script>
               
               <p>このプロジェクトは、TensorFlow.jsとCOCO-SSDモデル（Apache 2.0ライセンス）を使用しています。</p>
               
