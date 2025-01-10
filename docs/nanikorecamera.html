@@ -12,25 +12,12 @@
 </head>
 <body>
     <!-- ヘッダー -->
-    <header>
-        <h1>Welcome to My Website!</h1>
-        <p>This is my first GitHub Pages site.</p>
-        <a href="index.html">トップページ</a>
-
-    </header>
+    <div id="header-container"></div>
 
     <!-- メインコンテナ -->
     <div class="container">
         <!-- サイドバー -->
-        <aside class="sidebar">
-            <h2>りんく</h2>
-            <ul>
-                <li><a href="https://x.com/ken1math">X(Twitter)</a></li>
-                <li><a href="https://qiita.com/ken1math">Qiita</a></li>
-                <li><a href="https://github.com/ken1math">GitHub</a></li>
-                <li><a href="https://www.youtube.com/@%E3%81%91%E3%82%93%E3%81%84%E3%81%A1-p6r">YouTube</a></li>
-            </ul>
-        </aside>
+        <div id="sidebar-container"></div>
 
         <!-- コンテンツ -->
         <main class="content">
@@ -112,14 +99,16 @@
 
             </script>
               
-              <p>このプロジェクトは、TensorFlow.jsとCOCO-SSDモデル（Apache 2.0ライセンス）を使用しています。</p>
+            <p>このプロジェクトは、TensorFlow.jsとCOCO-SSDモデル（Apache 2.0ライセンス）を使用しています。</p>
               
         </main>
     </div>
 
     <!-- フッター -->
-    <footer>
-        <p>&copy; 2024 けんいちのウェブサイト</p>
-    </footer>
+    <div id="footer-container"></div>
+
+    <!-- 共通部分の読み込み -->
+    <script src="loadTemplate.js"></script>
+    
 </body>
 </html>
