@@ -6,6 +6,7 @@ body {
 
   /* PC向けのレイアウト */
   .container {
+    min-height:1000px;
     display: flex;
   }
   .sidebar {
