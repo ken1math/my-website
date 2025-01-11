@@ -17,6 +17,7 @@ body {
     max-height: 300px; /* 高さを制限 */
   }
   .content {
+    max-width: 800px;
     flex: 3;
     background-color: #e0e0e0;
   }
