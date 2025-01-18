@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL 3D Object with Camera Control</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+
+        /* 操作方法の表示 */
+        #instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* カメラ座標の表示 */
+        #coordinates {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* スライダーの表示 */
+        #speedControl {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <p><strong>操作方法：</strong></p>
+        <ul>
+            <li>マウスでカメラの向きを回転</li>
+            <li>WASDでカメラを現在向いている方向に移動</li>
+            <li>Qでカメラの向きをリセット（上下のみ）</li>
+        </ul>
+    </div>
+
+    <div id="coordinates">
+        <p>位置: X: 0, Y: 0, Z: 5</p>
+    </div>
+
+    <div id="speedControl">
+        <label for="speedSlider">移動スピード:</label>
+        <input type="range" id="speedSlider" min="0.01" max="1" step="0.01" value="0.1">
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 背景色とライト設定
+        scene.background = new THREE.Color(0x87CEEB); // 空色
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 5, 5);
+        scene.add(light);
+
+        // 立方体の設定
+        const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }));
+        scene.add(cube);
+
+        // 床の作成（深緑色）
+        const floorGeometry = new THREE.PlaneGeometry(500, 500);
+        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2; // 平面を水平に回転
+        scene.add(floor);
+
+        // グリッドを床に追加（床の上にマス目模様）
+        const gridHelper = new THREE.GridHelper(500, 50, 0xFFFFFF, 0xFFFFFF); // サイズ 500、格子数 50
+        scene.add(gridHelper);
+
+        camera.position.z = 5;
+
+        let isMousePressed = false;
+        let lastMouseX = 0, lastMouseY = 0;
+        let rotationX = 0, rotationY = 0;
+
+        // 移動フラグ
+        const moveDirection = { forward: false, backward: false, left: false, right: false };
+        let moveSpeed = 0.1; // 初期移動スピード
+
+        // スライダーの値を取得してmoveSpeedを更新
+        document.getElementById('speedSlider').addEventListener('input', (event) => {
+            moveSpeed = parseFloat(event.target.value);
+        });
+
+        // マウス操作
+        document.addEventListener('mousedown', (event) => {
+            isMousePressed = true;
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+        });
+
+        document.addEventListener('mouseup', () => { isMousePressed = false; });
+        document.addEventListener('mousemove', (event) => {
+            if (isMousePressed) {
+                rotationX += (event.clientX - lastMouseX) * 0.005;
+                rotationY -= (event.clientY - lastMouseY) * 0.005;
+                camera.rotation.set(rotationY, rotationX, 0);
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+            }
+        });
+
+        // スクロール
+        document.addEventListener('wheel', (event) => {
+            camera.position.z += event.deltaY * 0.05;
+            camera.position.z = Math.max(2, Math.min(camera.position.z, 10)); // ズーム制限
+        });
+
+        // キーボード操作
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'w') moveDirection.forward = true;
+            if (event.key === 's') moveDirection.backward = true;
+            if (event.key === 'a') moveDirection.left = true;
+            if (event.key === 'd') moveDirection.right = true;
+            if (event.key === 'q') { rotationY = 0; camera.rotation.x = 0; }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.key === 'w') moveDirection.forward = false;
+            if (event.key === 's') moveDirection.backward = false;
+            if (event.key === 'a') moveDirection.left = false;
+            if (event.key === 'd') moveDirection.right = false;
+        });
+
+        // アニメーション
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize();
+
+            if (moveDirection.forward) camera.position.addScaledVector(direction, moveSpeed);
+            if (moveDirection.backward) camera.position.addScaledVector(direction, -moveSpeed);
+
+            const right = new THREE.Vector3();
+            camera.getWorldDirection(right);
+            right.cross(new THREE.Vector3(0, 1, 0));
+            right.normalize();
+
+            if (moveDirection.left) camera.position.addScaledVector(right, -moveSpeed);
+            if (moveDirection.right) camera.position.addScaledVector(right, moveSpeed);
+
+            camera.position.y = 1; // 高さ固定
+
+            // カメラの座標を表示更新
+            const coordinatesElement = document.getElementById('coordinates');
+            coordinatesElement.innerHTML = `<p>位置: X: ${camera.position.x.toFixed(2)}, Y: ${camera.position.y.toFixed(2)}, Z: ${camera.position.z.toFixed(2)}</p>`;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // ウィンドウサイズ変更
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
