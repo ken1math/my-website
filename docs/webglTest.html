@@ -131,12 +131,6 @@
             }
         });
 
-        // スクロール
-        document.addEventListener('wheel', (event) => {
-            camera.position.z += event.deltaY * 0.05;
-            camera.position.z = Math.max(2, Math.min(camera.position.z, 10)); // ズーム制限
-        });
-
         // キーボード操作
         document.addEventListener('keydown', (event) => {
             if (event.key === 'w') moveDirection.forward = true;
