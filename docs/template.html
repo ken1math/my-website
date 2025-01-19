@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- ビューポート設定 -->
+    <link rel="stylesheet" href="gnStyle.css?v=1">
+
+    <script>
+        // URLパラメータを取得する関数
+        function getParameterByName(name) {
+            const url = window.location.href;
+            const params = new URL(url).searchParams;
+            return params.get(name); // 指定したパラメータ名の値を返す
+        }
+
+        // ページが読み込まれたらiframeにURLを設定する
+        window.onload = function() {
+            const iframeUrl = getParameterByName('iframeUrl');
+            if (iframeUrl) {
+                const iframe = document.getElementById('dynamicIframe');
+                iframe.src = iframeUrl;
+            } else {
+                alert('URLパラメータ "iframeUrl" が指定されていません');
+            }
+        };
+    </script>
+
+</head>
+
+<body>
+    <!-- ヘッダー -->
+    <div id="header-container"></div>
+
+    <!-- メインコンテナ -->
+    <div class="container">
+        <!-- サイドバー -->
+        <div id="sidebar-container"></div>
+
+        <!-- コンテンツ -->
+        <main class="content">
+            <iframe id="dynamicIframe" width="800" height="600" frameborder="0"></iframe>
+        </main>
+        
+    </div>
+
+    <!-- フッター -->
+    <div id="footer-container"></div>
+
+    <!-- 共通部分の読み込み -->
+    <script src="loadTemplate.js"></script>
+
+</body>
+</html>
+
