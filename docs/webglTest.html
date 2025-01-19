@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-    
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebGL 3D Object with Camera Control</title>
     <style>
+        /* body と canvas のスタイルを簡潔にまとめる */
         body { margin: 0; font-family: Arial, sans-serif; }
         canvas { display: block; }
 
-        /* 操作方法の表示 */
-        #instructions {
+        /* 共通のスタイルをまとめる */
+        .control-box {
             position: absolute;
-            top: 10px;
-            left: 10px;
             color: white;
             font-size: 16px;
             z-index: 1;
@@ -22,36 +21,18 @@
             border-radius: 5px;
         }
 
-        /* カメラ座標の表示 */
-        #coordinates {
-            position: absolute;
-            bottom: 50px;
-            left: 10px;
-            color: white;
-            font-size: 16px;
-            z-index: 1;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-        }
+        #instructions { top: 10px; left: 10px; }
+        #coordinates { bottom: 50px; left: 10px; }
+        #speedControl { bottom: 10px; left: 10px; }
 
-        /* スライダーの表示 */
-        #speedControl {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: white;
-            z-index: 1;
-        }
-
-        input[type="range"] {
-            width: 200px;
-        }
+        input[type="range"] { width: 200px; }
     </style>
 </head>
+
 <body>
 
-    <div id="instructions">
+    <!-- 操作方法の表示 -->
+    <div id="instructions" class="control-box">
         <p><strong>操作方法：</strong></p>
         <ul>
             <li>マウスでカメラの向きを回転</li>
@@ -60,17 +41,20 @@
         </ul>
     </div>
 
-    <div id="coordinates">
+    <!-- カメラ座標の表示 -->
+    <div id="coordinates" class="control-box">
         <p>位置: X: 0, Y: 0, Z: 5</p>
     </div>
 
-    <div id="speedControl">
+    <!-- スライダーの表示 -->
+    <div id="speedControl" class="control-box">
         <label for="speedSlider">移動スピード:</label>
         <input type="range" id="speedSlider" min="0.01" max="1" step="0.01" value="0.1">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // シーン、カメラ、レンダラーの初期化
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
@@ -83,43 +67,29 @@
         light.position.set(5, 5, 5);
         scene.add(light);
 
-        // 立方体の設定
+        // 立方体と床の作成
         const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }));
         scene.add(cube);
-
-        // 床の作成（深緑色）
-        const floorGeometry = new THREE.PlaneGeometry(500, 500);
-        const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide });
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-        floor.rotation.x = -Math.PI / 2; // 平面を水平に回転
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide }));
+        floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
-
-        // グリッドを床に追加（床の上にマス目模様）
-        const gridHelper = new THREE.GridHelper(500, 50, 0xFFFFFF, 0xFFFFFF); // サイズ 500、格子数 50
-        scene.add(gridHelper);
+        scene.add(new THREE.GridHelper(500, 50, 0xFFFFFF, 0xFFFFFF)); // グリッド
 
         camera.position.z = 5;
 
-        let isMousePressed = false;
-        let lastMouseX = 0, lastMouseY = 0;
+        // 操作に関するフラグと変数
+        let isMousePressed = false, lastMouseX = 0, lastMouseY = 0;
         let rotationX = 0, rotationY = 0;
-
-        // 移動フラグ
         const moveDirection = { forward: false, backward: false, left: false, right: false };
-        let moveSpeed = 0.1; // 初期移動スピード
+        let moveSpeed = 0.1;
 
-        // スライダーの値を取得してmoveSpeedを更新
+        // スライダーの値を取得して移動速度を更新
         document.getElementById('speedSlider').addEventListener('input', (event) => {
             moveSpeed = parseFloat(event.target.value);
         });
 
         // マウス操作
-        document.addEventListener('mousedown', (event) => {
-            isMousePressed = true;
-            lastMouseX = event.clientX;
-            lastMouseY = event.clientY;
-        });
-
+        document.addEventListener('mousedown', (event) => { isMousePressed = true; lastMouseX = event.clientX; lastMouseY = event.clientY; });
         document.addEventListener('mouseup', () => { isMousePressed = false; });
         document.addEventListener('mousemove', (event) => {
             if (isMousePressed) {
@@ -137,7 +107,7 @@
             if (event.key === 's') moveDirection.backward = true;
             if (event.key === 'a') moveDirection.left = true;
             if (event.key === 'd') moveDirection.right = true;
-            if (event.key === 'q') { rotationY = 0; camera.rotation.x = 0; }
+            if (event.key === 'q') { rotationY = 0; camera.rotation.x = 0; } // カメラリセット
         });
 
         document.addEventListener('keyup', (event) => {
@@ -153,9 +123,10 @@
 
             const direction = new THREE.Vector3();
             camera.getWorldDirection(direction);
-            direction.y = 0;
+            direction.y = 0; // Y軸方向の移動を制限
             direction.normalize();
 
+            // 移動処理
             if (moveDirection.forward) camera.position.addScaledVector(direction, moveSpeed);
             if (moveDirection.backward) camera.position.addScaledVector(direction, -moveSpeed);
 
@@ -169,16 +140,15 @@
 
             camera.position.y = 1; // 高さ固定
 
-            // カメラの座標を表示更新
-            const coordinatesElement = document.getElementById('coordinates');
-            coordinatesElement.innerHTML = `<p>位置: X: ${camera.position.x.toFixed(2)}, Y: ${camera.position.y.toFixed(2)}, Z: ${camera.position.z.toFixed(2)}</p>`;
+            // カメラ座標の表示更新
+            document.getElementById('coordinates').innerHTML = `<p>位置: X: ${camera.position.x.toFixed(2)}, Y: ${camera.position.y.toFixed(2)}, Z: ${camera.position.z.toFixed(2)}</p>`;
 
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // ウィンドウサイズ変更
+        // ウィンドウサイズ変更対応
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -186,4 +156,5 @@
         });
     </script>
 </body>
+
 </html>
