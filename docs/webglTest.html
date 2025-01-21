@@ -22,7 +22,7 @@
         }
 
         #instructions { top: 10px; left: 10px; }
-        #coordinates { bottom: 50px; left: 10px; }
+        #coordinates { bottom: 60px; left: 10px; }
         #speedControl { bottom: 10px; left: 10px; }
 
         input[type="range"] { width: 200px; }
@@ -35,7 +35,7 @@
     <div id="instructions" class="control-box">
         <p><strong>操作方法：</strong></p>
         <ul>
-            <li>マウスでカメラの向きを回転</li>
+            <li>マウスでカメラの向きを回転(クリック中)</li>
             <li>WASDでカメラを現在向いている方向に移動</li>
             <li>Qでカメラの向きをリセット（上下のみ）</li>
         </ul>
@@ -56,20 +56,83 @@
     <script>
         // シーン、カメラ、レンダラーの初期化
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // ↓ カメラの設定。 視野角, アスペクト比, 近距離クリッピング, 遠距離クリッピング(それより近い(遠い)ものは描画されない)
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); 
         const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        // レンダラー(描画エンジン)のサイズをブラウザウィンドウの幅と高さにする
+        renderer.setSize(window.innerWidth, window.innerHeight); 
+        // レンダラーをHTMLに追加
         document.body.appendChild(renderer.domElement);
 
-        // 背景色とライト設定
+        // 背景色の設定
         scene.background = new THREE.Color(0x87CEEB); // 空色
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 5, 5);
-        scene.add(light);
 
-        // 立方体と床の作成
-        const cube = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true }));
-        scene.add(cube);
+        // ライトの設定
+        const light = new THREE.DirectionalLight(0xffffff, 2);  // 光の色, 光の強さ
+        light.position.set(10, 10, 10); // 光源の位置
+        scene.add(light); // 光源をシーンに追加
+
+        // 立方体1（光沢あり）
+        const cube1 = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 1, 1),
+            new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,   // 緑色
+                roughness: 0.2,    // 少し光沢がある
+                metalness: 0.5     // 半金属
+            })
+        );
+        cube1.position.set(-2, 0.5, 0);  // y座標を0.5に設定（地面から浮かせる）
+        scene.add(cube1);
+
+        // 立方体2（光沢なし）
+        const cube2 = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 2, 1),
+            new THREE.MeshStandardMaterial({ 
+                color: 0xff0000,   // 赤色
+                roughness: 1,      // 光沢なし
+                metalness: 0       // 非金属
+            })
+        );
+        cube2.position.set(0, 0.5, 0);    // y座標を0.5に設定
+        scene.add(cube2);
+
+        // 立方体3（光沢強）
+        const cube3 = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 2),
+            new THREE.MeshStandardMaterial({ 
+                color: 0x0000ff,   // 青色
+                roughness: 0.05,   // 非常に光沢が強い
+                metalness: 1       // 金属的な質感
+            })
+        );
+        cube3.position.set(2, 0.5, 0);    // y座標を0.5に設定
+        scene.add(cube3);
+
+        // 立方体(半透明)
+        const cube4 = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 2, 1),
+            new THREE.MeshStandardMaterial({
+                color: 0x00ff00,
+                opacity: 0.5,  // 50%透明
+                transparent: true  // 透明にするための設定
+            })
+        );
+        cube4.position.set(-3, 0.5, -4);   
+        scene.add(cube4);
+
+        // 立方体(発光)
+        const cube5 = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshStandardMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,  // 緑色の発光を設定
+                emissiveIntensity: 5  // 発光の強さ
+            })
+        );
+        cube5.position.set(2, 2, -6);    // y座標を0.5に設定
+        scene.add(cube5);
+
+        // 床の作成
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide }));
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
