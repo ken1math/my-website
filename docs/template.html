@@ -31,6 +31,19 @@
             } else {
                 console.warn('URLパラメータ "title" が指定されていません');
             }
+
+            // リンク付きの一文を追加
+            const linkText = getParameterByName('linkText'); // リンクテキスト
+            const linkUrl = getParameterByName('linkUrl'); // リンクURL
+            if (linkText && linkUrl) {
+                const paragraph = document.createElement('p'); // <p>要素を作成
+                const link = document.createElement('a'); // <a>要素を作成
+                link.href = linkUrl;
+                link.textContent = linkText;
+                link.target = '_blank'; // 新しいタブで開く設定
+                paragraph.appendChild(link); // <p>の中に<a>を追加
+                document.querySelector('h2').after(paragraph); // <h2>の直後に挿入
+            }
         };
     </script>
 
