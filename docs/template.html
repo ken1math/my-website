@@ -22,6 +22,15 @@
             } else {
                 alert('URLパラメータ "iframeUrl" が指定されていません');
             }
+
+            // タイトルをURLパラメータから設定
+            const title = getParameterByName('title'); // "title" パラメータを取得
+            if (title) {
+                const h2 = document.querySelector('h2');
+                h2.textContent = title; // 取得したタイトルを設定
+            } else {
+                console.warn('URLパラメータ "title" が指定されていません');
+            }
         };
     </script>
 
@@ -38,6 +47,8 @@
 
         <!-- コンテンツ -->
         <main class="content">
+            <h2>タイトル</h2>
+            
             <iframe id="dynamicIframe" width="100%" height="600" frameborder="0"></iframe>
         </main>
         
