@@ -180,50 +180,6 @@
 
 
 
-
-        // // タッチ操作用の変数
-        // let isTouchActive = false;
-        // let lastTouchX = 0, lastTouchY = 0;
-
-        // // タッチ操作開始（タッチしたとき）
-        // document.addEventListener('touchstart', (event) => {
-        //     if (event.touches.length === 1) { // 指が1本の場合のみ動作
-        //         isTouchActive = true;
-        //         lastTouchX = event.touches[0].clientX;
-        //         lastTouchY = event.touches[0].clientY;
-        //     }
-        // });
-
-        // // タッチ移動中（ドラッグ操作）
-        // canvas.addEventListener('touchmove', (event) => {
-        //     event.preventDefault(); // キャンバス内でのスクロール無効化
-
-        //     if (isTouchActive && event.touches.length === 1) {
-        //         const touch = event.touches[0];
-        //         const deltaX = touch.clientX - lastTouchX;
-        //         const deltaY = touch.clientY - lastTouchY;
-
-        //         // カメラの回転を更新
-        //         rotationX += deltaX * 0.005;
-        //         rotationY -= deltaY * 0.005;
-        //         camera.rotation.set(rotationY, rotationX, 0);
-
-        //         // 現在のタッチ位置を記録
-        //         lastTouchX = touch.clientX;
-        //         lastTouchY = touch.clientY;
-        //     }
-        // }, { passive: false });
-
-
-        // // タッチ終了（指を離したとき）
-        // document.addEventListener('touchend', () => {
-        //     isTouchActive = false;
-        // });
-
-
-
-
-
         // キーボード操作
         document.addEventListener('keydown', (event) => {
             if (event.key === 'w') moveDirection.forward = true;
@@ -240,24 +196,27 @@
             if (event.key === 'd') moveDirection.right = false;
         });
 
+
+
         // アニメーション
         function animate() {
-            requestAnimationFrame(animate);
+            requestAnimationFrame(animate);   // 次のフレームをリクエスト
 
             const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
-            direction.y = 0; // Y軸方向の移動を制限
-            direction.normalize();
+            camera.getWorldDirection(direction);    // カメラが向いている方向を取得
+            direction.y = 0;        // Y軸(上下)方向の移動を制限
+            direction.normalize();  // 正規化(ベクトルの長さを1にする) 
 
-            // 移動処理
+            // 前後移動
             if (moveDirection.forward) camera.position.addScaledVector(direction, moveSpeed);
             if (moveDirection.backward) camera.position.addScaledVector(direction, -moveSpeed);
 
-            const right = new THREE.Vector3();
-            camera.getWorldDirection(right);
-            right.cross(new THREE.Vector3(0, 1, 0));
+            const right = new THREE.Vector3();  
+            camera.getWorldDirection(right);           // カメラの向いている向きを取得
+            right.cross(new THREE.Vector3(0, 1, 0));   // カメラの右方向を計算
             right.normalize();
 
+            // 左右移動
             if (moveDirection.left) camera.position.addScaledVector(right, -moveSpeed);
             if (moveDirection.right) camera.position.addScaledVector(right, moveSpeed);
 
@@ -269,14 +228,17 @@
             renderer.render(scene, camera);
         }
 
+        // アニメーションの開始
         animate();
+
 
         // ウィンドウサイズ変更対応
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;  // アスペクト比の更新
+            camera.updateProjectionMatrix();   // 投影行列の更新（カメラの視覚的な変換を表現する行列）
+            renderer.setSize(window.innerWidth, window.innerHeight); // レンダラーサイズの更新
         });
+
     </script>
 </body>
 
