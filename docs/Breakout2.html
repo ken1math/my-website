@@ -5,35 +5,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ブロック崩し</title>
     <style>
+        /* 全体の設定 */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            flex-direction: column;
+        }
+
+        /* Canvas設定 */
         canvas {
             display: block;
             margin: 0 auto;
             background: #f0f0f0;
             border: 1px solid #000;
+            max-width: 90%; /* 画面サイズに合わせて幅を調整 */
+            max-height: 70%; /* 高さを適切に制限 */
         }
+
+        /* ゲームクリアメッセージ */
         #clearMessage {
             text-align: center;
             font-size: 24px;
             color: green;
             display: none;
         }
-        #gameButtons {
-            text-align: center;
-            margin-top: 20px;
-        }
-        button {
+
+        /* 左右ボタン */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
             padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .button-container button {
+            background-color: #0095DD;
+            border: none;
+            color: white;
             font-size: 18px;
+            padding: 15px 30px;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 45%; /* ボタン幅 */
+        }
+
+        .button-container button:active {
+            background-color: #007bb5;
+        }
+
+        /* スマホのためにボタンを縦に並べる */
+        @media (max-width: 600px) {
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .button-container button {
+                width: 80%; /* スマホでボタンを大きくする */
+                margin: 5px 0;
+            }
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="480" height="320"></canvas>
     <div id="clearMessage">ゲームクリア！</div>
-    <div id="gameButtons">
-        <button id="leftBtn">←←</button>
-        <button id="rightBtn">→→</button>
+    <div class="button-container">
+        <button id="leftBtn">←</button>
+        <button id="rightBtn">→</button>
     </div>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
@@ -73,6 +120,37 @@
         document.addEventListener("keydown", keyDownHandler);
         document.addEventListener("keyup", keyUpHandler);
 
+        // 左右ボタンの操作
+        let leftPressedFlag = false;
+        let rightPressedFlag = false;
+
+        // クリックイベント（マウスとタッチ両方に対応）
+        function setupButtonEvents(buttonId, directionFlag) {
+            const button = document.getElementById(buttonId);
+
+            button.addEventListener("mousedown", function() {
+                directionFlag = true;
+            });
+
+            button.addEventListener("mouseup", function() {
+                directionFlag = false;
+            });
+
+            button.addEventListener("touchstart", function(event) {
+                event.preventDefault();
+                directionFlag = true;
+            });
+
+            button.addEventListener("touchend", function(event) {
+                event.preventDefault();
+                directionFlag = false;
+            });
+        }
+
+        setupButtonEvents("leftBtn", leftPressedFlag);
+        setupButtonEvents("rightBtn", rightPressedFlag);
+
+        // キー操作のハンドラ
         function keyDownHandler(e) {
             if (e.key === "Right" || e.key === "ArrowRight") {
                 rightPressed = true;
@@ -89,18 +167,6 @@
             }
         }
 
-        // ボタン操作の設定
-        const leftBtn = document.getElementById("leftBtn");
-        const rightBtn = document.getElementById("rightBtn");
-
-        leftBtn.addEventListener("mousedown", () => leftPressed = true);
-        leftBtn.addEventListener("mouseup", () => leftPressed = false);
-        leftBtn.addEventListener("mouseleave", () => leftPressed = false);
-
-        rightBtn.addEventListener("mousedown", () => rightPressed = true);
-        rightBtn.addEventListener("mouseup", () => rightPressed = false);
-        rightBtn.addEventListener("mouseleave", () => rightPressed = false);
-
         // 描画関数
         function drawBall() {
             ctx.beginPath();
@@ -115,7 +181,7 @@
             ctx.beginPath();
             ctx.moveTo(paddleX, canvas.height - paddleHeight); 
             ctx.lineTo(paddleX + paddleWidth, canvas.height - paddleHeight); 
-            ctx.quadraticCurveTo(paddleX + paddleWidth / 2, canvas.height - paddleHeight - paddleArcHeight, paddleX, canvas.height - paddleHeight); // 曲線
+            ctx.quadraticCurveTo(paddleX + paddleWidth / 2, canvas.height - paddleHeight - paddleArcHeight, paddleX, canvas.height - paddleHeight);
             ctx.fillStyle = "#0095DD";
             ctx.fill();
             ctx.closePath();
@@ -139,6 +205,7 @@
             }
         }
 
+        // 衝突判定
         function collisionDetection() {
             let allBricksCleared = true;
             for (let c = 0; c < brickColumnCount; c++) {
@@ -152,15 +219,15 @@
                             ballY > brick.y &&
                             ballY < brick.y + brickHeight
                         ) {
-                            ballDY = -ballDY; // ボールの方向を反転
-                            brick.status = 0; // ブロックを消す
+                            ballDY = -ballDY;
+                            brick.status = 0;
                         }
                     }
                 }
             }
 
             if (allBricksCleared) {
-                document.getElementById("clearMessage").style.display = "block"; // クリアメッセージを表示
+                document.getElementById("clearMessage").style.display = "block";
                 return true; // ゲームクリア
             }
 
@@ -172,15 +239,14 @@
                 if (ballX > paddleX && ballX < paddleX + paddleWidth) {
                     const relativeX = ballX - (paddleX + paddleWidth / 2);
                     const normalizedX = relativeX / (paddleWidth / 2);
-
                     const angle = normalizedX * Math.PI / 4;
-
                     ballDX = 8 * Math.sin(angle);
                     ballDY = -Math.abs(8 * Math.cos(angle));
                 }
             }
         }
 
+        // 描画ループ
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBricks();
@@ -210,10 +276,14 @@
                 }
             }
 
-            if (rightPressed && paddleX < canvas.width - paddleWidth) {
-                paddleX += 10;
-            } else if (leftPressed && paddleX > 0) {
-                paddleX -= 10;
+            if (rightPressed || rightPressedFlag) {
+                if (paddleX < canvas.width - paddleWidth) {
+                    paddleX += 10;
+                }
+            } else if (leftPressed || leftPressedFlag) {
+                if (paddleX > 0) {
+                    paddleX -= 10;
+                }
             }
 
             requestAnimationFrame(draw);
