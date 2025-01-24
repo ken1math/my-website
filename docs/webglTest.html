@@ -133,18 +133,23 @@
         scene.add(cube5);
 
         // 床の作成
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide }));
-        floor.rotation.x = -Math.PI / 2;
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(500, 500), // 500 * 500 の平面
+            new THREE.MeshBasicMaterial({ color: 0x2e8b57, side: THREE.DoubleSide })); // 平面の両面を描画
+        floor.rotation.x = -Math.PI / 2; // 90度回転(そのままだと縦に描画される)
         scene.add(floor);
-        scene.add(new THREE.GridHelper(500, 50, 0xFFFFFF, 0xFFFFFF)); // グリッド
+        // グリッド 全体のサイズ, 1マスの大きさ(分割数), グリッドの線の色
+        scene.add(new THREE.GridHelper(500, 50, 0xFFFFFF, 0xFFFFFF)); 
 
         camera.position.z = 5;
 
-        // 操作に関するフラグと変数
-        let isMousePressed = false, lastMouseX = 0, lastMouseY = 0;
-        let rotationX = 0, rotationY = 0;
-        const moveDirection = { forward: false, backward: false, left: false, right: false };
-        let moveSpeed = 0.1;
+        // マウス操作に関するフラグと変数
+        let isMousePressed = false           // マウスが押されているかどうか
+        let lastMouseX = 0, lastMouseY = 0;  // マウスの最後の位置を記録(これで移動量を出す)
+        let rotationX = 0, rotationY = 0;    // 回転かくどを管理
+        // 進行方向の管理(キーを押されたらtrue,離れたらfalseにする)
+        const moveDirection = { forward: false, backward: false, left: false, right: false }; 
+        let moveSpeed = 0.1; // 動く速さ(スライダーで調節される)
 
         // スライダーの値を取得して移動速度を更新
         document.getElementById('speedSlider').addEventListener('input', (event) => {
@@ -152,17 +157,69 @@
         });
 
         // マウス操作
-        document.addEventListener('mousedown', (event) => { isMousePressed = true; lastMouseX = event.clientX; lastMouseY = event.clientY; });
-        document.addEventListener('mouseup', () => { isMousePressed = false; });
+        // クリックしたとき(押し始め)
+        document.addEventListener('mousedown', (event) => { 
+            isMousePressed = true;           // マウスが置かれている状態を記録
+            lastMouseX = event.clientX;      // マウスが押された時点でのx座標を記録
+            lastMouseY = event.clientY;      // マウスが押された時点でのy座標を記録
+        });  
+        // クリックが外れた時(押し終わり)
+        document.addEventListener('mouseup', () => {
+             isMousePressed = false; 
+            });
+        // マウスを移動させたときに発火(if (isMousePressed)によってクリック中のみになる)
         document.addEventListener('mousemove', (event) => {
             if (isMousePressed) {
-                rotationX += (event.clientX - lastMouseX) * 0.005;
-                rotationY -= (event.clientY - lastMouseY) * 0.005;
-                camera.rotation.set(rotationY, rotationX, 0);
-                lastMouseX = event.clientX;
-                lastMouseY = event.clientY;
+                rotationX += (event.clientX - lastMouseX) * 0.005;  // 現在-直前でマウスの移動量を計算
+                rotationY -= (event.clientY - lastMouseY) * 0.005;  // 0.005の部分は回転感度の調整の係数
+                camera.rotation.set(rotationY, rotationX, 0);  // x(上下),y(左右),z(傾き)
+                lastMouseX = event.clientX;   // 現在のマウスの座標を記録
+                lastMouseY = event.clientY;   
             }
         });
+
+
+        
+
+        // タッチ操作用の変数
+        let isTouchActive = false;
+        let lastTouchX = 0, lastTouchY = 0;
+
+        // タッチ操作開始（タッチしたとき）
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) { // 指が1本の場合のみ動作
+                isTouchActive = true;
+                lastTouchX = event.touches[0].clientX;
+                lastTouchY = event.touches[0].clientY;
+            }
+        });
+
+        // タッチ移動中（ドラッグ操作）
+        document.addEventListener('touchmove', (event) => {
+            if (isTouchActive && event.touches.length === 1) {
+                const touch = event.touches[0];
+                const deltaX = touch.clientX - lastTouchX;
+                const deltaY = touch.clientY - lastTouchY;
+
+                // カメラの回転を更新
+                rotationX += deltaX * 0.005;
+                rotationY -= deltaY * 0.005;
+                camera.rotation.set(rotationY, rotationX, 0);
+
+                // 現在のタッチ位置を記録
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }
+        });
+
+        // タッチ終了（指を離したとき）
+        document.addEventListener('touchend', () => {
+            isTouchActive = false;
+        });
+
+
+
+
 
         // キーボード操作
         document.addEventListener('keydown', (event) => {
