@@ -125,30 +125,32 @@
         let rightPressedFlag = false;
 
         // クリックイベント（マウスとタッチ両方に対応）
-        function setupButtonEvents(buttonId, directionFlag) {
+        function setupButtonEvents(buttonId, directionFlagSetter) {
             const button = document.getElementById(buttonId);
 
             button.addEventListener("mousedown", function() {
-                directionFlag = true;
+                directionFlagSetter(true); // フラグをセット
             });
 
             button.addEventListener("mouseup", function() {
-                directionFlag = false;
+                directionFlagSetter(false); // フラグをリセット
             });
 
             button.addEventListener("touchstart", function(event) {
                 event.preventDefault();
-                directionFlag = true;
+                directionFlagSetter(true); // フラグをセット
             });
 
             button.addEventListener("touchend", function(event) {
                 event.preventDefault();
-                directionFlag = false;
+                directionFlagSetter(false); // フラグをリセット
             });
         }
 
-        setupButtonEvents("leftBtn", leftPressedFlag);
-        setupButtonEvents("rightBtn", rightPressedFlag);
+        // 左右ボタンのイベントを設定
+        setupButtonEvents("leftBtn", function(value) { leftPressedFlag = value; });
+        setupButtonEvents("rightBtn", function(value) { rightPressedFlag = value; });
+
 
         // キー操作のハンドラ
         function keyDownHandler(e) {
