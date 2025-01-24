@@ -8,7 +8,7 @@
     <style>
         /* body と canvas のスタイルを簡潔にまとめる */
         body { margin: 0; font-family: Arial, sans-serif; }
-        canvas { display: block; }
+        canvas { display: block; } /* Three.jsで描画を行うために自動的に生成される */
 
         /* 共通のスタイルをまとめる */
         .control-box {
@@ -35,9 +35,9 @@
     <div id="instructions" class="control-box">
         <p><strong>操作方法：</strong></p>
         <ul>
-            <li>マウスでカメラの向きを回転(クリック中)</li>
-            <li>WASDでカメラを現在向いている方向に移動</li>
-            <li>Qでカメラの向きをリセット（上下のみ）</li>
+            <li>視点:マウス(クリック)</li>
+            <li>視点リセット:Q</li>
+            <li>移動:WASD</li>
         </ul>
     </div>
 
@@ -179,43 +179,46 @@
         });
 
 
-        
 
-        // タッチ操作用の変数
-        let isTouchActive = false;
-        let lastTouchX = 0, lastTouchY = 0;
 
-        // タッチ操作開始（タッチしたとき）
-        document.addEventListener('touchstart', (event) => {
-            if (event.touches.length === 1) { // 指が1本の場合のみ動作
-                isTouchActive = true;
-                lastTouchX = event.touches[0].clientX;
-                lastTouchY = event.touches[0].clientY;
-            }
-        });
+        // // タッチ操作用の変数
+        // let isTouchActive = false;
+        // let lastTouchX = 0, lastTouchY = 0;
 
-        // タッチ移動中（ドラッグ操作）
-        document.addEventListener('touchmove', (event) => {
-            if (isTouchActive && event.touches.length === 1) {
-                const touch = event.touches[0];
-                const deltaX = touch.clientX - lastTouchX;
-                const deltaY = touch.clientY - lastTouchY;
+        // // タッチ操作開始（タッチしたとき）
+        // document.addEventListener('touchstart', (event) => {
+        //     if (event.touches.length === 1) { // 指が1本の場合のみ動作
+        //         isTouchActive = true;
+        //         lastTouchX = event.touches[0].clientX;
+        //         lastTouchY = event.touches[0].clientY;
+        //     }
+        // });
 
-                // カメラの回転を更新
-                rotationX += deltaX * 0.005;
-                rotationY -= deltaY * 0.005;
-                camera.rotation.set(rotationY, rotationX, 0);
+        // // タッチ移動中（ドラッグ操作）
+        // canvas.addEventListener('touchmove', (event) => {
+        //     event.preventDefault(); // キャンバス内でのスクロール無効化
 
-                // 現在のタッチ位置を記録
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
-            }
-        });
+        //     if (isTouchActive && event.touches.length === 1) {
+        //         const touch = event.touches[0];
+        //         const deltaX = touch.clientX - lastTouchX;
+        //         const deltaY = touch.clientY - lastTouchY;
 
-        // タッチ終了（指を離したとき）
-        document.addEventListener('touchend', () => {
-            isTouchActive = false;
-        });
+        //         // カメラの回転を更新
+        //         rotationX += deltaX * 0.005;
+        //         rotationY -= deltaY * 0.005;
+        //         camera.rotation.set(rotationY, rotationX, 0);
+
+        //         // 現在のタッチ位置を記録
+        //         lastTouchX = touch.clientX;
+        //         lastTouchY = touch.clientY;
+        //     }
+        // }, { passive: false });
+
+
+        // // タッチ終了（指を離したとき）
+        // document.addEventListener('touchend', () => {
+        //     isTouchActive = false;
+        // });
 
 
 
