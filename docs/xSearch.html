@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X 検索ツール</title>
+  <style>
+    /* ベーススタイル（モバイルファースト） */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Helvetica Neue', sans-serif;
+      background: linear-gradient(to right, #f8f9fa, #e0eafc);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .container {
+      background-color: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 480px;
+    }
+    h1 {
+      font-size: 1.6em;
+      color: #333;
+      margin-bottom: 0.5em;
+      text-align: center;
+    }
+    .guide {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 1em;
+      text-align: center;
+    }
+    label {
+      font-weight: bold;
+      color: #555;
+      display: block;
+      margin: 12px 0 6px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+    button {
+      background-color: #6c63ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background-color: #5a52d4;
+    }
+    .date-range {
+      display: flex;
+      flex-direction: column;
+    }
+    .date-range input {
+      width: 100%;
+    }
+    .footer {
+      font-size: 0.8em;
+      color: #999;
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    /* タブレット以上の画面幅で横並び */
+    @media (min-width: 600px) {
+      .date-range {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+      .date-range input {
+        width: 48%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>X検索ツール</h1>
+    <p class="guide">キーワードまたはアカウント名を入力して「検索」</p>
+
+    <label for="query">検索ワード</label>
+    <input type="text" id="query" placeholder="例：カフェ お茶">
+
+    <label for="lang">言語</label>
+    <select id="lang">
+      <option value="">すべての言語</option>
+      <option value="ja">日本語</option>
+      <option value="en">英語</option>
+      <option value="ko">韓国語</option>
+    </select>
+
+    <label for="fromUser">特定アカウント</label>
+    <input type="text" id="fromUser" placeholder="例：ken1math">
+
+    <label>日付範囲</label>
+    <div class="date-range">
+      <input type="date" id="since">
+      <input type="date" id="until">
+    </div>
+
+    <button onclick="search()">検索</button>
+
+  </div>
+
+  <script>
+    function search() {
+      const q = document.getElementById("query").value.trim();
+      const lang = document.getElementById("lang").value;
+      const fromUser = document.getElementById("fromUser").value.trim();
+      const since = document.getElementById("since").value;
+      const until = document.getElementById("until").value;
+
+      if (!q && !fromUser) {
+        alert("検索ワードかアカウント名を入力してください");
+        return;
+      }
+
+      let fullQuery = q;
+      if (lang)      fullQuery += ` lang:${lang}`;
+      if (fromUser) fullQuery += ` from:${fromUser}`;
+      if (since)    fullQuery += ` since:${since}`;
+      if (until)    fullQuery += ` until:${until}`;
+
+      const url = "https://twitter.com/search?q=" + encodeURIComponent(fullQuery)
+                + "&src=typed_query&f=live";
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
