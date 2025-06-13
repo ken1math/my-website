@@ -1,63 +1,238 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- ビューポート設定 -->
-    <link rel="stylesheet" href="gnStyle.css?v=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>けんいちのページ</title>
 
-    <title>けんいちのペーじ</title>
+  <!-- ファビコン設定 -->
+  <link rel="icon" href="icon.jpg" type="image/jpeg">
+  <link rel="apple-touch-icon" href="icon.jpg">
 
-</head> 
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #4A90E2;
+      --bg-color: #FFF;
+      --text-color: #333;
+      --subtext-color: #666;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .profile-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .profile-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary-color);
+    }
+    .intro-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .intro-group h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      white-space: nowrap;
+    }
+    .intro-group p:first-of-type {
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--text-color);
+    }
+    .intro-group p:last-of-type {
+      font-size: 0.95rem;
+      font-weight: 300;
+      color: var(--subtext-color);
+      max-width: 600px;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    @media (min-width: 600px) {
+      header {
+        flex-direction: row;
+        align-items: center;
+        gap: 24px;
+      }
+      .profile-wrapper {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+      }
+      .intro-group {
+        align-items: flex-start;
+        text-align: left;
+      }
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(74,144,226,0.1);
+      color: var(--primary-color);
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background 0.3s, color 0.3s;
+    }
+    nav a:hover {
+      background: var(--primary-color);
+      color: #FFF;
+    }
+    nav img {
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+    }
+
+    section#projects ul {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    section#projects li {
+      padding: 12px;
+      border: 1px solid #EEE;
+      border-radius: 6px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    section#projects li:hover {
+      border-color: var(--primary-color);
+      background: rgba(74,144,226,0.05);
+    }
+    section#projects a {
+      text-decoration: none;
+      color: var(--text-color);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #AAA;
+    }
+
+    section#projects ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    align-items: stretch; 
+    }
+
+    section#projects li {
+    margin: 0;     
+    padding: 0;    
+    border: none;  
+    }
+
+    section#projects li a {
+    display: block;             
+    min-height: 85px;           
+    padding: 16px;              
+    border: 1px solid #EEE;    
+    border-radius: 6px;         
+    background: #FFF;          
+    text-decoration: none;
+    color: var(--text-color);
+    transition: border-color 0.2s, background 0.2s;
+    box-sizing: border-box;     
+    }
+
+    section#projects li a:hover {
+    border-color: var(--primary-color);
+    background: rgba(74,144,226,0.05);
+    }
+
+
+  </style>
+</head>
 <body>
-    <!-- ヘッダー -->
-    <div id="header-container"></div>
+  <div class="container">
+    <header>
+      <div class="profile-wrapper">
+        <img src="icon.jpg" alt="けんいちのアイコン" class="profile-icon">
+        <div class="intro-group">
+          <h1>けんいち</h1>
+          <p>システムエンジニア／数学講師</p>
+          <p>数理科学科卒業後、高校数学教師をし、社会人大学院生として理学院数学専攻を修了。転職してエンジニアになりました。現在は専門学校の講師も兼務しています。</p>
+        </div>
+      </div>
+    </header>
 
-    <!-- メインコンテナ -->
-    <div class="container">
+    <nav>
+      <a href="https://x.com/ken1math" target="_blank" rel="noopener">
+        <img src="https://www.google.com/s2/favicons?domain=x.com" alt="Xアイコン">
+        X (Twitter)
+      </a>
+      <a href="https://qiita.com/ken1math" target="_blank" rel="noopener">
+        <img src="https://www.google.com/s2/favicons?domain=qiita.com" alt="Qiitaアイコン">
+        Qiita
+      </a>
+      <a href="https://github.com/ken1math" target="_blank" rel="noopener">
+        <img src="https://www.google.com/s2/favicons?domain=github.com" alt="GitHubアイコン">
+        GitHub
+      </a>
+      <!-- <a href="https://www.youtube.com/@%E3%81%91%E3%82%93%E3%81%84%E3%81%A1-p6r" target="_blank" rel="noopener">
+        <img src="https://www.google.com/s2/favicons?domain=youtube.com" alt="YouTubeアイコン">
+        YouTube
+      </a> -->
+    </nav>
 
-        <!-- サイドバー -->
-        <div id="sidebar-container"></div>
+    <section id="projects">
+      <h2>コンテンツ</h2>
+      <ul>
+        <li><a href="tool1.html">(ツール)行頭・行末に文字列を追加</a></li>
+        <li><a href="tool2.html">(ツール)文字列の置き換え</a></li>
+        <li><a href="tool3.html">(ツール)指定した文字で縦に揃える</a></li>
+        <li><a href="pokemon.html">ポケモンタイプ相性クイズ</a></li>
+        <li><a href="template.html?title=ブロック崩し(作成中)&iframeUrl=Breakout2.html">ブロック崩し(作成中)</a></li>
+        <li><a href="nanikorecamera.html">なにこれカメラ(作成中)</a></li>
+        <li><a href="template.html?title=3d空間と立方体&linkText=WebGLで遊んでみた！ 3D空間でカメラを動かして立方体を操るWebアプリの作成&linkUrl=https://qiita.com/ken1math/items/7f07d1bf03f36c580e2f&iframeUrl=webglTest.html">3d空間と立方体</a></li>
+        <li><a href="template.html?title=サンレンタン得点計算&iframeUrl=https://ken1math.github.io/sanretanCaluc/">「サンレンタン」得点計算</a></li>
+        <li><a href="https://ken1math.github.io/sqlserver-create-table-generator/createTableGenerator.html">CREATE TABLE文ジェネレータ (SQL Server専用)</a></li>
+        <li><a href="https://ken1math.github.io/sqlserver-insert-table-generator/insertTableGenerator.html">INSERT TABLE文ジェネレータ (SQL Server専用)</a></li>
+      </ul>
+    </section>
 
-        <!-- コンテンツ -->
-        <main class="content">
-            <h2>コンテンツ</h2>
-
-            <ul>
-
-            <li><a href="tool1.html">(ツール)行頭・行末に文字列を追加</a></li>  
-            <li><a href="tool2.html">(ツール)文字列の置き換え</a></li>  
-            <li><a href="tool3.html">(ツール)指定した文字で縦に揃える</a></li>  
-            <li><a href="pokemon.html">ポケモンタイプ相性クイズ</a></li>  
-
-            <!-- <li><a href="Breakout.html">ブロック崩し(作成中)</a></li>   -->
-            <li><a href="template.html?title=ブロック崩し(作成中)&iframeUrl=Breakout2.html">
-                    ブロック崩し(作成中)</a></li>
-
-            <li><a href="nanikorecamera.html">なにこれカメラ(作成中)</a></li>
-            
-            <li><a href="template.html?title=3d空間と立方体&linkText=WebGLで遊んでみた！ 3D空間でカメラを動かして立方体を操るWebアプリの作成&linkUrl=https://qiita.com/ken1math/items/7f07d1bf03f36c580e2f&iframeUrl=webglTest.html">
-                    3d空間と立方体</a></li>
-            
-            <li><a href="template.html?title=サンレンタン得点計算&iframeUrl=https://ken1math.github.io/sanretanCaluc/">
-                    「サンレンタン」得点計算</a></li>  
-            
-            <li><a href="https://ken1math.github.io/sqlserver-create-table-generator/createTableGenerator.html">
-                    CREATE TABLE文ジェネレータ (SQL Server専用)</a></li>  
-
-            <li><a href="https://ken1math.github.io/sqlserver-insert-table-generator/insertTableGenerator.html">
-                    INSERT TABLE文ジェネレータ (SQL Server専用)</a></li>             
-            
-            </ul>
-
-
-        </main>
-    </div>
-
-    <!-- フッター -->
-    <div id="footer-container"></div>
-
-    <!-- 共通部分の読み込み -->
-    <script src="loadTemplate.js"></script>
-
+    <footer>
+      &copy; 2025 けんいち
+    </footer>
+  </div>
 </body>
 </html>
