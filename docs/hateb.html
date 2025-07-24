@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qiita はてなブックマークチェッカー</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      table-layout: fixed; /* 列幅固定 */
+      min-width: 600px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      word-break: break-word;
+      font-size: 1rem;
+    }
+    th {
+      background-color: #f8f8f8;
+      cursor: pointer;
+    }
+    /* 列幅指定 */
+    th:nth-child(1), td:nth-child(1) { width: 80px; text-align: right; }   /* はてブ数 */
+    th:nth-child(2), td:nth-child(2) { width: auto; text-align: left; }    /* タイトル */
+    th:nth-child(3), td:nth-child(3) { width: 80px; text-align: right; }   /* いいね数 */
+    th:nth-child(4), td:nth-child(4) { width: 100px; text-align: right; }  /* 投稿日 */
+
+    button {
+      padding: 6px 12px;
+      font-size: 1rem;
+    }
+    a {
+      color: #007acc;
+      text-decoration: none;
+    }
+    /* モバイル対応 */
+    @media (max-width: 600px) {
+      th, td {
+        font-size: 0.9rem;
+        padding: 6px;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      label, input, button {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Qiita はてなブックマークチェッカー</h1>
+  <label>
+    Qiitaユーザー名: <input type="text" id="username" value="ken1math" />
+  </label>
+  <button id="check">チェック開始</button>
+
+  <div class="table-wrapper">
+    <table id="result">
+      <thead>
+        <tr>
+          <th id="sort-hatebu">はてブ数 ▲▼</th>
+          <th>タイトル</th>
+          <th id="sort-likes">いいね数 ▲▼</th>
+          <th id="sort-date">投稿日 ▲▼</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    let currentItems = [];
+    let sortDirection = {
+      likes: 'desc',
+      date: 'desc',
+      hatebu: 'desc'
+    };
+
+    // 初期表示用の空行（列幅維持）
+    function showEmptyRow() {
+      const tbody = document.querySelector('#result tbody');
+      tbody.innerHTML = '';
+      const tr = document.createElement('tr');
+      [ '', '', '', '' ].forEach(() => {
+        const td = document.createElement('td');
+        td.textContent = '';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    showEmptyRow();
+
+    document.getElementById('check').addEventListener('click', () => {
+      const user = document.getElementById('username').value.trim();
+      if (!user) return;
+      const apiUrl = `https://qiita.com/api/v2/users/${encodeURIComponent(user)}/items?page=1&per_page=100`;
+      fetch(apiUrl)
+        .then(res => res.json())
+        .then(items => {
+          currentItems = items.map(item => ({ ...item, hatena_count: 0 }));
+          renderTable(currentItems);
+        })
+        .catch(err => {
+          console.error(err);
+          alert('データの取得に失敗しました。ユーザー名をご確認ください。');
+        });
+    });
+
+    function renderTable(items) {
+      const tbody = document.querySelector('#result tbody');
+      tbody.innerHTML = '';
+      if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="4">記事が見つかりませんでした。</td></tr>';
+        return;
+      }
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+
+        // はてなブックマーク数
+        const tdBookmark = document.createElement('td');
+        tdBookmark.textContent = '...';
+        tr.appendChild(tdBookmark);
+
+        // タイトル
+        const tdTitle = document.createElement('td');
+        const aTitle = document.createElement('a');
+        aTitle.href = item.url;
+        aTitle.textContent = item.title;
+        aTitle.target = '_blank';
+        tdTitle.appendChild(aTitle);
+        tr.appendChild(tdTitle);
+
+        // いいね数
+        const tdLikes = document.createElement('td');
+        tdLikes.textContent = item.likes_count ?? 0;
+        tr.appendChild(tdLikes);
+
+        // 投稿日
+        const tdDate = document.createElement('td');
+        tdDate.textContent = new Date(item.created_at).toISOString().split('T')[0];
+        tr.appendChild(tdDate);
+
+        tbody.appendChild(tr);
+
+        // JSONP ではてブ数取得
+        const callbackName = 'hb_cb_' + Math.random().toString(36).substr(2);
+        window[callbackName] = count => {
+          item.hatena_count = count || 0;
+          tdBookmark.textContent = '';
+          const a = document.createElement('a');
+          a.href = 'https://b.hatena.ne.jp/entry/' + encodeURIComponent(item.url);
+          a.target = '_blank';
+          a.textContent = item.hatena_count;
+          tdBookmark.appendChild(a);
+          document.body.removeChild(script);
+          delete window[callbackName];
+        };
+        const script = document.createElement('script');
+        script.src = `https://api.b.st-hatena.com/entry.count?url=${encodeURIComponent(item.url)}&callback=${callbackName}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    function sortItemsBy(key, type = null) {
+      const dir = sortDirection[key] === 'asc' ? 1 : -1;
+      currentItems.sort((a, b) => {
+        let va = a[key], vb = b[key];
+        if (type === 'date') {
+          va = new Date(va);
+          vb = new Date(vb);
+        }
+        return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+      });
+      sortDirection[key] = sortDirection[key] === 'asc' ? 'desc' : 'asc';
+      renderTable(currentItems);
+    }
+
+    document.getElementById('sort-likes').addEventListener('click', () => {
+      sortItemsBy('likes_count');
+    });
+    document.getElementById('sort-date').addEventListener('click', () => {
+      sortItemsBy('created_at', 'date');
+    });
+    document.getElementById('sort-hatebu').addEventListener('click', () => {
+      sortItemsBy('hatena_count');
+    });
+  </script>
+</body>
+</html>
