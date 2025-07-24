@@ -16,7 +16,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      table-layout: fixed; /* 列幅固定 */
+      table-layout: fixed;
       min-width: 600px;
     }
     th, td {
@@ -29,12 +29,10 @@
       background-color: #f8f8f8;
       cursor: pointer;
     }
-    /* 列幅指定 */
-    th:nth-child(1), td:nth-child(1) { width: 80px; text-align: right; }   /* はてブ数 */
-    th:nth-child(2), td:nth-child(2) { width: auto; text-align: left; }    /* タイトル */
-    th:nth-child(3), td:nth-child(3) { width: 80px; text-align: right; }   /* いいね数 */
-    th:nth-child(4), td:nth-child(4) { width: 100px; text-align: right; }  /* 投稿日 */
-
+    th:nth-child(1), td:nth-child(1) { width: 80px; text-align: right; }
+    th:nth-child(2), td:nth-child(2) { width: auto; text-align: left; }
+    th:nth-child(3), td:nth-child(3) { width: 80px; text-align: right; }
+    th:nth-child(4), td:nth-child(4) { width: 100px; text-align: right; }
     button {
       padding: 6px 12px;
       font-size: 1rem;
@@ -43,23 +41,51 @@
       color: #007acc;
       text-decoration: none;
     }
-    /* モバイル対応 */
     @media (max-width: 600px) {
-      th, td {
-        font-size: 0.9rem;
-        padding: 6px;
-      }
-      h1 {
-        font-size: 1.2rem;
-      }
-      label, input, button {
-        font-size: 1rem;
-      }
+      th, td { font-size: 0.9rem; padding: 6px; }
+      h1 { font-size: 1.2rem; }
+      label, input, button { font-size: 1rem; }
+    }
+    .info {
+      background: #f0f8ff;
+      border: 1px solid #b0c4de;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+    .info h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+    .info ul {
+      margin: 8px 0 0 20px;
     }
   </style>
 </head>
 <body>
   <h1>Qiita はてなブックマークチェッカー</h1>
+
+  <div class="info">
+    <h2>■ 使い方</h2>
+    <ul>
+      <li>Qiitaユーザー名を入力し、「チェック開始」をクリック。</li>
+      <li>最新100記事のはてブ数、いいね数、投稿日を取得。</li>
+      <li>テーブルのヘッダーをクリックで昇順・降順ソート。</li>
+    </ul>
+    <h2>■ 注意事項</h2>
+    <ul>
+      <li>Qiita API と はてなブックマーク API の利用制限にご注意ください。</li>
+      <li>1回の呼び出しで取得できる記事は最大100件です。</li>
+      <li>モダンブラウザ推奨（IE非対応の場合あり）。</li>
+      <li>はてブ取得はJSONPを使用。設定によりブロックされる場合があります。</li>
+    </ul>
+    <h2>■ 免責事項</h2>
+    <ul>
+      <li>本ツールはサンプル公開用です。動作保証はありません。</li>
+      <li>利用による損害等の責任は負いかねます。自己責任でご利用ください。</li>
+    </ul>
+  </div>
+
   <label>
     Qiitaユーザー名: <input type="text" id="username" value="ken1math" />
   </label>
@@ -81,21 +107,14 @@
 
   <script>
     let currentItems = [];
-    let sortDirection = {
-      likes: 'desc',
-      date: 'desc',
-      hatebu: 'desc'
-    };
+    let sortDirection = { likes: 'desc', date: 'desc', hatebu: 'desc' };
 
-    // 初期表示用の空行（列幅維持）
     function showEmptyRow() {
       const tbody = document.querySelector('#result tbody');
       tbody.innerHTML = '';
       const tr = document.createElement('tr');
-      [ '', '', '', '' ].forEach(() => {
-        const td = document.createElement('td');
-        td.textContent = '';
-        tr.appendChild(td);
+      ['', '', '', ''].forEach(() => {
+        const td = document.createElement('td'); td.textContent = ''; tr.appendChild(td);
       });
       tbody.appendChild(tr);
     }
@@ -111,10 +130,7 @@
           currentItems = items.map(item => ({ ...item, hatena_count: 0 }));
           renderTable(currentItems);
         })
-        .catch(err => {
-          console.error(err);
-          alert('データの取得に失敗しました。ユーザー名をご確認ください。');
-        });
+        .catch(err => { console.error(err); alert('データ取得失敗。ユーザー名を確認してください。'); });
     });
 
     function renderTable(items) {
@@ -126,75 +142,38 @@
       }
       items.forEach(item => {
         const tr = document.createElement('tr');
-
-        // はてなブックマーク数
-        const tdBookmark = document.createElement('td');
-        tdBookmark.textContent = '...';
-        tr.appendChild(tdBookmark);
-
-        // タイトル
-        const tdTitle = document.createElement('td');
-        const aTitle = document.createElement('a');
-        aTitle.href = item.url;
-        aTitle.textContent = item.title;
-        aTitle.target = '_blank';
-        tdTitle.appendChild(aTitle);
-        tr.appendChild(tdTitle);
-
-        // いいね数
-        const tdLikes = document.createElement('td');
-        tdLikes.textContent = item.likes_count ?? 0;
-        tr.appendChild(tdLikes);
-
-        // 投稿日
-        const tdDate = document.createElement('td');
-        tdDate.textContent = new Date(item.created_at).toISOString().split('T')[0];
-        tr.appendChild(tdDate);
-
+        const tdBookmark = document.createElement('td'); tdBookmark.textContent = '...'; tr.appendChild(tdBookmark);
+        const tdTitle = document.createElement('td'); const a = document.createElement('a'); a.href=item.url; a.textContent=item.title; a.target='_blank'; tdTitle.appendChild(a); tr.appendChild(tdTitle);
+        const tdLikes = document.createElement('td'); tdLikes.textContent=item.likes_count ?? 0; tr.appendChild(tdLikes);
+        const tdDate = document.createElement('td'); tdDate.textContent=new Date(item.created_at).toISOString().split('T')[0]; tr.appendChild(tdDate);
         tbody.appendChild(tr);
-
-        // JSONP ではてブ数取得
-        const callbackName = 'hb_cb_' + Math.random().toString(36).substr(2);
-        window[callbackName] = count => {
+        const cb = 'hb_cb_' + Math.random().toString(36).substr(2);
+        window[cb] = count => {
           item.hatena_count = count || 0;
           tdBookmark.textContent = '';
-          const a = document.createElement('a');
-          a.href = 'https://b.hatena.ne.jp/entry/' + encodeURIComponent(item.url);
-          a.target = '_blank';
-          a.textContent = item.hatena_count;
-          tdBookmark.appendChild(a);
+          const a2 = document.createElement('a'); a2.href='https://b.hatena.ne.jp/entry/'+encodeURIComponent(item.url); a2.target='_blank'; a2.textContent=item.hatena_count;
+          tdBookmark.appendChild(a2);
           document.body.removeChild(script);
-          delete window[callbackName];
+          delete window[cb];
         };
         const script = document.createElement('script');
-        script.src = `https://api.b.st-hatena.com/entry.count?url=${encodeURIComponent(item.url)}&callback=${callbackName}`;
+        script.src = `https://api.b.st-hatena.com/entry.count?url=${encodeURIComponent(item.url)}&callback=${cb}`;
         document.body.appendChild(script);
       });
     }
 
-    function sortItemsBy(key, type = null) {
-      const dir = sortDirection[key] === 'asc' ? 1 : -1;
-      currentItems.sort((a, b) => {
-        let va = a[key], vb = b[key];
-        if (type === 'date') {
-          va = new Date(va);
-          vb = new Date(vb);
-        }
-        return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+    function sortItemsBy(key, type=null) {
+      const dir = sortDirection[key]==='asc'?1:-1;
+      currentItems.sort((a,b) => {
+        let va=a[key], vb=b[key]; if(type==='date'){va=new Date(va);vb=new Date(vb);}        
+        return (va<vb?-1:va>vb?1:0)*dir;
       });
-      sortDirection[key] = sortDirection[key] === 'asc' ? 'desc' : 'asc';
+      sortDirection[key] = sortDirection[key]==='asc'? 'desc':'asc';
       renderTable(currentItems);
     }
-
-    document.getElementById('sort-likes').addEventListener('click', () => {
-      sortItemsBy('likes_count');
-    });
-    document.getElementById('sort-date').addEventListener('click', () => {
-      sortItemsBy('created_at', 'date');
-    });
-    document.getElementById('sort-hatebu').addEventListener('click', () => {
-      sortItemsBy('hatena_count');
-    });
+    document.getElementById('sort-likes').addEventListener('click',()=>sortItemsBy('likes_count'));
+    document.getElementById('sort-date').addEventListener('click',()=>sortItemsBy('created_at','date'));
+    document.getElementById('sort-hatebu').addEventListener('click',()=>sortItemsBy('hatena_count'));
   </script>
 </body>
 </html>
