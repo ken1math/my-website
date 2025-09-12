@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Color Preview — カラープレビュー</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa7b2;--accent:#6ee7b7}
+    *{box-sizing:border-box}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif;
+      background:linear-gradient(180deg,#081126 0%, #071827 100%);
+      color:#e6eef6;margin:0;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;padding:24px
+    }
+    .card{
+      width:100%;max-width:780px;
+      background:rgba(255,255,255,0.03);
+      border-radius:12px;padding:20px;
+      box-shadow:0 6px 30px rgba(2,6,23,0.6);
+    }
+    h1{margin:0 0 8px;font-size:20px}
+    p{margin:0 0 16px;color:var(--muted)}
+    .row{display:flex;gap:12px;align-items:center}
+    .input{flex:1;min-width:0}
+    input[type="text"]{
+      width:100%;padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.06);
+      background:rgba(255,255,255,0.02);
+      color:inherit;font-size:15px
+    }
+    input[type="color"]{
+      width:50px;height:42px;padding:0;border:none;
+      border-radius:8px;cursor:pointer;
+      background:none;
+    }
+    button{
+      padding:10px 12px;border-radius:8px;
+      border:0;background:var(--accent);
+      color:#04211a;font-weight:600;cursor:pointer
+    }
+    .preview{
+      height:160px;border-radius:10px;margin-top:16px;
+      border:1px solid rgba(255,255,255,0.04);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700
+    }
+    .meta{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .chip{
+      background:rgba(255,255,255,0.03);
+      padding:8px 10px;border-radius:8px;
+      color:var(--muted);font-size:13px
+    }
+    .error{
+      color:#ffb4b4;background:rgba(255,180,180,0.06);
+      padding:8px;border-radius:8px
+    }
+    footer{margin-top:14px;color:var(--muted);font-size:13px}
+    @media (max-width:560px){
+      .row{flex-direction:column;align-items:stretch}
+      button,input[type="color"]{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>色コードでプレビュー</h1>
+    <p>16進の色コードを入力、またはカラーピッカーで選んでプレビューします。</p>
+
+    <div class="row">
+      <div class="input">
+        <label for="colorInput" class="sr-only">カラーコード</label>
+        <input id="colorInput" type="text" placeholder="#abc または 123456 を入力" autocomplete="off" />
+      </div>
+      <input id="colorPicker" type="color" />
+      <button id="applyBtn">反映</button>
+      <button id="randomBtn" title="ランダム色を生成">ランダム</button>
+      <button id="copyBtn">コピー</button>
+    </div>
+
+    <div id="error" class="error" style="display:none;margin-top:12px"></div>
+
+    <div id="preview" class="preview" style="background:#111">
+      <span id="previewText">プレビュー</span>
+    </div>
+
+    <div class="meta">
+      <div class="chip">入力: <span id="raw">-</span></div>
+      <div class="chip">正規化: <span id="normalized">-</span></div>
+      <div class="chip">RGB: <span id="rgb">-</span></div>
+      <div class="chip">HSL: <span id="hsl">-</span></div>
+    </div>
+
+    <footer>※ # を付けても付けなくても動作します。3桁入力は自動で6桁に展開します。</footer>
+  </main>
+
+  <script>
+    const input = document.getElementById('colorInput');
+    const colorPicker = document.getElementById('colorPicker');
+    const applyBtn = document.getElementById('applyBtn');
+    const preview = document.getElementById('preview');
+    const previewText = document.getElementById('previewText');
+    const rawEl = document.getElementById('raw');
+    const normEl = document.getElementById('normalized');
+    const rgbEl = document.getElementById('rgb');
+    const hslEl = document.getElementById('hsl');
+    const errorEl = document.getElementById('error');
+    const copyBtn = document.getElementById('copyBtn');
+    const randomBtn = document.getElementById('randomBtn');
+
+    function showError(msg){ errorEl.style.display='block'; errorEl.textContent=msg; }
+    function hideError(){ errorEl.style.display='none'; errorEl.textContent=''; }
+
+    function normalizeHex(raw){
+      if(!raw) return null;
+      let s = raw.trim();
+      if(s.startsWith('#')) s = s.slice(1);
+      if(!/^[0-9a-fA-F]{3}$/.test(s) && !/^[0-9a-fA-F]{6}$/.test(s)) return null;
+      if(s.length===3){ s = s.split('').map(ch=>ch+ch).join(''); }
+      return '#'+s.toUpperCase();
+    }
+
+    function hexToRgb(hex){
+      const h = hex.replace('#','');
+      const r = parseInt(h.slice(0,2),16);
+      const g = parseInt(h.slice(2,4),16);
+      const b = parseInt(h.slice(4,6),16);
+      return {r,g,b};
+    }
+
+    function rgbToHsl(r,g,b){
+      r/=255; g/=255; b/=255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      let h=0,s=0,l=(max+min)/2;
+      if(max!==min){
+        const d = max-min;
+        s = l>0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max){
+          case r: h = (g-b)/d + (g<b?6:0); break;
+          case g: h = (b-r)/d + 2; break;
+          case b: h = (r-g)/d + 4; break;
+        }
+        h /= 6;
+      }
+      return {h:Math.round(h*360), s:Math.round(s*100), l:Math.round(l*100)};
+    }
+
+    function applyColor(){
+      const raw = input.value;
+      rawEl.textContent = raw || '-';
+      const norm = normalizeHex(raw);
+      if(!norm){
+        showError('無効なカラーコードです。3桁または6桁の16進数を入力してください。');
+        normEl.textContent = '-'; rgbEl.textContent='-'; hslEl.textContent='-';
+        preview.style.background = '#111'; previewText.style.color = '#ddd'; previewText.textContent='プレビュー';
+        return;
+      }
+      hideError();
+      normEl.textContent = norm;
+      preview.style.background = norm;
+      colorPicker.value = norm; // ピッカーにも反映
+
+      const {r,g,b} = hexToRgb(norm);
+      rgbEl.textContent = `rgb(${r}, ${g}, ${b})`;
+      const {h,s,l} = rgbToHsl(r,g,b);
+      hslEl.textContent = `hsl(${h}°, ${s}%, ${l}%)`;
+
+      const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
+      previewText.style.color = luminance>0.6 ? '#04211a' : '#eef7f7';
+      previewText.textContent = norm;
+    }
+
+    applyBtn.addEventListener('click',applyColor);
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ applyColor(); } });
+
+    copyBtn.addEventListener('click', async ()=>{
+      const norm = normalizeHex(input.value);
+      if(!norm){ showError('コピーするには有効なカラーコードを入力してください。'); return; }
+      try{
+        await navigator.clipboard.writeText(norm);
+        copyBtn.textContent = 'コピー済み';
+        setTimeout(()=>copyBtn.textContent='コピー',900);
+      }catch(e){ showError('クリップボードにコピーできませんでした。'); }
+    });
+
+    randomBtn.addEventListener('click', ()=>{
+      const r = Math.floor(Math.random()*256);
+      const g = Math.floor(Math.random()*256);
+      const b = Math.floor(Math.random()*256);
+      const hex = '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+      input.value = hex; applyColor();
+    });
+
+    // ピッカーからの入力をコード欄へ反映
+    colorPicker.addEventListener('input', ()=>{
+      input.value = colorPicker.value;
+      applyColor();
+    });
+
+    // 初期値
+    input.value = '#4D96FF'; applyColor();
+  </script>
+</body>
+</html>
