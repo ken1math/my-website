@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>対数クイズ（10秒チャレンジ）</title>
+  <style>
+    :root{font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif}
+    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f6f8fb;margin:0}
+    .card{background:white;padding:24px;border-radius:12px;box-shadow:0 6px 20px rgba(20,30,60,0.08);width:360px;text-align:center}
+    h1{margin:0 0 12px;font-size:20px}
+    .question{font-size:28px;font-weight:600;text-align:center;margin:18px 0}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    button.answer{min-width:46px;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:16px}
+    button.answer:hover{transform:translateY(-2px)}
+    .timer{font-size:22px;color:#2f6fed;margin-top:10px;font-weight:600}
+    .result{height:28px;text-align:center;margin-top:10px;font-weight:600}
+    .final{font-size:20px;margin-top:20px;color:#2f6fed;font-weight:bold}
+    .start-btn, .retry-btn{margin-top:16px;padding:10px 18px;border:none;border-radius:8px;background:#2f6fed;color:white;font-size:16px;cursor:pointer}
+    .retry-btn{display:none;background:#28a745}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>対数クイズ（10秒チャレンジ）</h1>
+    <div class="timer" id="timer">10.0</div>
+    <div class="question" id="question">スタートボタンを押してください</div>
+    <div class="controls" id="answers"></div>
+    <div class="result" id="result"></div>
+    <div class="final" id="final"></div>
+    <button class="start-btn" id="startBtn">スタート</button>
+    <button class="retry-btn" id="retryBtn">リトライ</button>
+  </div>
+
+<script>
+(function(){
+  const qEl = document.getElementById('question');
+  const answersEl = document.getElementById('answers');
+  const resultEl = document.getElementById('result');
+  const timerEl = document.getElementById('timer');
+  const finalEl = document.getElementById('final');
+  const startBtn = document.getElementById('startBtn');
+  const retryBtn = document.getElementById('retryBtn');
+
+  let current = null;
+  let correctCount = 0;
+  let totalCount = 0;
+  let timer = 10.0;
+  let interval = null;
+
+  function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min }
+
+  function generateQuestion(){
+    const base = randInt(2,10);
+    const exp = randInt(1,5);
+    const value = Math.pow(base, exp);
+    return {base,exp,value};
+  }
+
+  function renderQuestion(){
+    current = generateQuestion();
+    const valueStr = current.value.toLocaleString();
+    qEl.innerHTML = `\u006C\u006F\u0067<sub>${current.base}</sub> ${valueStr}`;
+    resultEl.textContent = '';
+
+    answersEl.innerHTML = '';
+    for(let i=1;i<=5;i++){
+      const btn = document.createElement('button');
+      btn.className = 'answer';
+      btn.textContent = i;
+      btn.addEventListener('click',()=>onAnswer(i));
+      answersEl.appendChild(btn);
+    }
+  }
+
+  function onAnswer(selected){
+    Array.from(answersEl.children).forEach(b=>b.disabled=true);
+    totalCount++;
+    const isCorrect = (selected === current.exp);
+    if(isCorrect){
+      correctCount++;
+      resultEl.textContent = '✔ 正解！';
+      resultEl.style.color = '#2f6fed';
+    } else {
+      resultEl.textContent = `✖ 正解は ${current.exp}`;
+      resultEl.style.color = '#d9534f';
+    }
+    setTimeout(()=>{
+      if(timer>0){
+        renderQuestion();
+      }
+    },500);
+  }
+
+  function startTimer(){
+    timer = 10.0;
+    timerEl.textContent = timer.toFixed(1);
+    interval = setInterval(()=>{
+      timer -= 0.1;
+      if(timer<=0){
+        timer = 0;
+        clearInterval(interval);
+        finish();
+      }
+      timerEl.textContent = timer.toFixed(1);
+    },100);
+  }
+
+  function finish(){
+    qEl.textContent = '終了！';
+    answersEl.innerHTML = '';
+    resultEl.textContent = '';
+    finalEl.textContent = `スコア：${correctCount} / ${totalCount}`;
+    retryBtn.style.display = 'inline-block';
+  }
+
+  function startGame(){
+    startBtn.style.display = 'none';
+    retryBtn.style.display = 'none';
+    correctCount = 0;
+    totalCount = 0;
+    finalEl.textContent = '';
+    renderQuestion();
+    startTimer();
+  }
+
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', startGame);
+
+  document.addEventListener('keydown',(e)=>{
+    if(!current) return;
+    const key = e.key;
+    let val = null;
+    if(key >= '1' && key <= '5') val = Number(key);
+    if(val !== null){
+      const btn = Array.from(answersEl.children).find(b=>Number(b.textContent)===val);
+      if(btn && !btn.disabled) btn.click();
+    }
+  });
+})();
+</script>
+</body>
+</html>
