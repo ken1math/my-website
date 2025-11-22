@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>講義用時計</title>
+  <style>
+    :root{--bg:#071026;--fg:#e6f0ff;--warn:#ff6b6b;}
+    html,body{height:100%;margin:0}
+    body{
+      display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(circle,var(--bg) 0%, #031021 70%);
+      color:var(--fg);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+      transition: color 0.3s ease; /* 色の変化を滑らかに */
+    }
+    
+    /* フルスクリーンボタン */
+    .fullscreen-btn {
+      position: absolute; top: 1rem; right: 1rem;
+      background: transparent; border: 1px solid var(--fg); color: var(--fg);
+      padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; opacity: 0.5;
+    }
+    .fullscreen-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+
+    .clock{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;text-align:center;position:relative}
+    
+    .date{font-size:4vw;opacity:0.9;margin-bottom:0.4rem;}
+    
+    /* font-variant-numeric: tabular-nums; を追加して数字の幅を固定（ガタつき防止） */
+    .time{font-size:12vw;font-weight:800;line-height:1;letter-spacing:0.02em; font-variant-numeric: tabular-nums;}
+    
+    .controls{display:flex; gap:0.5rem; justify-content:center; font-size:1rem; margin-top:1rem; flex-wrap: wrap;}
+    .controls input, .controls button{font-size:1rem; padding:0.3rem 0.5rem; border-radius:4px; border:none;}
+    .label {font-size:4vw; font-weight:700; margin-bottom:0.5rem; display:flex; justify-content:center; margin-top: 1rem; min-height: 1.5em;}
+    
+    /* 時間超過時のスタイル */
+    body.overtime { color: var(--warn); }
+    body.overtime .fullscreen-btn { border-color: var(--warn); color: var(--warn); }
+
+    @media (min-width:1000px){ 
+      .time{font-size:120px} 
+      .date{font-size:36px} 
+      .controls input,.controls button{font-size:24px} 
+      .label{font-size:40px} 
+    }
+  </style>
+</head>
+<body>
+  <button id="fsBtn" class="fullscreen-btn">全画面</button>
+
+  <div class="clock" role="status" aria-live="polite">
+    <div id="date" class="date"></div>
+    <div id="time" class="time">--:--:--</div>
+    
+    <div class="label"><span id="endTimeLabel"></span><span id="endTimeDisplay"></span></div>
+    
+    <div class="controls">
+      <input id="endTimeInput" type="time" placeholder="終了時刻">
+      <input id="addMinutesInput" type="number" placeholder="分追加" style="width:80px;">
+      <button id="setEndTimeBtn">セット</button>
+      <button id="hideMemoBtn">クリア</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const timeEl = document.getElementById('time');
+      const dateEl = document.getElementById('date');
+      const endTimeDisplay = document.getElementById('endTimeDisplay');
+      const endTimeLabel = document.getElementById('endTimeLabel');
+      const endTimeInput = document.getElementById('endTimeInput');
+      const addMinutesInput = document.getElementById('addMinutesInput');
+      const setEndTimeBtn = document.getElementById('setEndTimeBtn');
+      const hideMemoBtn = document.getElementById('hideMemoBtn');
+      const fsBtn = document.getElementById('fsBtn');
+      const body = document.body;
+
+      function pad(n){ return String(n).padStart(2,'0'); }
+
+      function render(now){
+        // 時刻表示
+        const h = pad(now.getHours());
+        const m = pad(now.getMinutes());
+        const s = pad(now.getSeconds());
+        timeEl.textContent = `${h}:${m}:${s}`;
+        
+        // 日付表示（曜日追加）
+        const dateOpt = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+        dateEl.textContent = now.toLocaleDateString('ja-JP', dateOpt);
+
+        // 終了判定ロジック
+        if(endTimeInput.value){
+          const [eh, em] = endTimeInput.value.split(':').map(Number);
+          // 現在時刻を「分」に換算
+          const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+          const endTotalMins = eh * 60 + em;
+
+          // 終了時刻を過ぎているか（秒単位は厳密にせず、分が変わった瞬間に判定）
+          if(currentTotalMins >= endTotalMins){
+            endTimeDisplay.textContent = '終了';
+            endTimeLabel.textContent = '';
+            body.classList.add('overtime'); // 赤くする
+          } else {
+            body.classList.remove('overtime');
+          }
+        } else {
+          // 入力がない場合は赤くしない
+          body.classList.remove('overtime');
+        }
+      }
+
+      function updateDisplay(){
+        if(endTimeInput.value){
+          endTimeLabel.textContent = '課題終了時刻：';
+          // まだ終了判定前なので、ここでは時刻だけ出す（実際の判定はrenderで行う）
+          // もし既に過ぎていればrenderが即座に書き換えるので一瞬だけ
+          if(endTimeDisplay.textContent !== '終了') {
+            endTimeDisplay.textContent = endTimeInput.value;
+          }
+        } else {
+          endTimeLabel.textContent = '';
+          endTimeDisplay.textContent = '';
+          body.classList.remove('overtime');
+        }
+      }
+
+      // セットボタン（現在時刻 + N分）
+      setEndTimeBtn.addEventListener('click', ()=>{
+        const addMinutes = parseInt(addMinutesInput.value);
+        if(!isNaN(addMinutes)){
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + addMinutes);
+          endTimeInput.value = pad(now.getHours()) + ':' + pad(now.getMinutes());
+        }
+        updateDisplay();
+        // 即座に反映させるためにrenderを一回呼ぶ
+        render(new Date());
+      });
+
+      // 入力欄の手動変更
+      endTimeInput.addEventListener('input', updateDisplay);
+
+      // クリアボタン（要望の修正箇所）
+      hideMemoBtn.addEventListener('click', ()=>{ 
+        endTimeDisplay.textContent = '';
+        endTimeLabel.textContent = '';
+        endTimeInput.value = ''; // 入力欄を空にする
+        addMinutesInput.value = ''; // 追加分も空にする
+        body.classList.remove('overtime'); // 色も戻す
+      });
+
+      // 全画面ボタン
+      fsBtn.addEventListener('click', ()=>{
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+          fsBtn.textContent = '復帰';
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          fsBtn.textContent = '全画面';
+        }
+      });
+
+      function startClock(){
+        render(new Date());
+        const ms = new Date().getMilliseconds();
+        const delay = 1000 - ms;
+        setTimeout(()=>{
+          render(new Date());
+          setInterval(()=>render(new Date()), 1000);
+        }, delay);
+      }
+
+      startClock();
+      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') render(new Date()); });
+    })();
+  </script>
+</body>
+</html>
