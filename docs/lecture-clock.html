@@ -5,67 +5,216 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>講義用時計</title>
   <style>
-    :root{--bg:#071026;--fg:#e6f0ff;--warn:#ff6b6b;}
+    :root{
+      --bg:#071026;
+      --fg:#e6f0ff;
+      --warn:#ff6b6b;
+      --accent:#4da6ff;
+      --scale: 1;
+      --switch-on: #4CAF50;
+      --switch-off: #ccc;
+    }
     html,body{height:100%;margin:0}
     body{
       display:flex;align-items:center;justify-content:center;
       background:radial-gradient(circle,var(--bg) 0%, #031021 70%);
       color:var(--fg);
       font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
-      transition: color 0.3s ease; /* 色の変化を滑らかに */
+      transition: color 0.3s ease;
+      overflow: hidden;
     }
     
-    /* フルスクリーンボタン */
     .fullscreen-btn {
-      position: absolute; top: 1rem; right: 1rem;
+      position: absolute; top: 1rem; right: 1rem; z-index: 10;
       background: transparent; border: 1px solid var(--fg); color: var(--fg);
       padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; opacity: 0.5;
     }
     .fullscreen-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
 
-    .clock{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;text-align:center;position:relative}
+    .clock{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      width: 100%;
+      text-align:center;position:relative;
+      padding-bottom: 5vh; 
+    }
     
-    .date{font-size:4vw;opacity:0.9;margin-bottom:0.4rem;}
+    .date{
+      font-size: calc(min(5vw, 3vh) * var(--scale)); 
+      opacity:0.8; margin-bottom: calc(1vh * var(--scale));
+    }
     
-    /* font-variant-numeric: tabular-nums; を追加して数字の幅を固定（ガタつき防止） */
-    .time{font-size:12vw;font-weight:800;line-height:1;letter-spacing:0.02em; font-variant-numeric: tabular-nums;}
+    .time-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: calc(min(22vw, 35vh) * var(--scale));
+      font-weight:800; 
+      line-height:1; 
+      letter-spacing:0.02em; 
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
     
-    .controls{display:flex; gap:0.5rem; justify-content:center; font-size:1rem; margin-top:1rem; flex-wrap: wrap;}
-    .controls input, .controls button{font-size:1rem; padding:0.3rem 0.5rem; border-radius:4px; border:none;}
-    .label {font-size:4vw; font-weight:700; margin-bottom:0.5rem; display:flex; justify-content:center; margin-top: 1rem; min-height: 1.5em;}
+    .time-part {
+      width: 1.25em;
+      text-align: center;
+      display: inline-block;
+    }
     
-    /* 時間超過時のスタイル */
+    .time-colon {
+      width: 0.3em;
+      text-align: center;
+      opacity: 0.8;
+      position: relative; top: -0.05em;
+    }
+
+    .label-container {
+      display: flex; 
+      align-items: baseline;
+      justify-content: center;
+      gap: 0.5em;
+      margin-top: calc(3vh * var(--scale));
+      min-height: 3em;
+    }
+
+    .label-text {
+      font-size: calc(min(4vw, 2.5vh) * var(--scale));
+      font-weight:700; 
+      opacity: 0.8;
+    }
+
+    .end-time-display {
+      font-size: calc(min(10vw, 7vh) * var(--scale)); 
+      font-weight: 800;
+      line-height: 1;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    
     body.overtime { color: var(--warn); }
+    body.overtime .end-time-display { color: var(--warn); }
     body.overtime .fullscreen-btn { border-color: var(--warn); color: var(--warn); }
 
-    @media (min-width:1000px){ 
-      .time{font-size:120px} 
-      .date{font-size:36px} 
-      .controls input,.controls button{font-size:24px} 
-      .label{font-size:40px} 
+    /* コントローラー */
+    .controls{
+      display:flex; gap:0.5rem; justify-content:center; align-items: center;
+      margin-top:1rem; flex-wrap: wrap;
+      position: absolute; bottom: 1.5rem;
+      width: 100%;
+      opacity: 0; transition: opacity 0.3s;
+      padding: 1rem;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    }
+    body:hover .controls, .controls:focus-within { opacity: 1; }
+
+    .controls input:not([type="checkbox"]):not([type="range"]), .controls button{font-size:16px; padding:0.4rem 0.6rem; border-radius:4px; border:none; outline: none;}
+    
+    .slider-container {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 20px;
+      color: rgba(255,255,255,0.9); font-size: 0.8rem;
+      backdrop-filter: blur(4px);
+    }
+    input[type="range"] { cursor: pointer; width: 100px; }
+    
+    /* トグルスイッチのCSS */
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--switch-off);
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--switch-on);
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
     }
   </style>
 </head>
 <body>
   <button id="fsBtn" class="fullscreen-btn">全画面</button>
 
-  <div class="clock" role="status" aria-live="polite">
+  <div class="clock">
     <div id="date" class="date"></div>
-    <div id="time" class="time">--:--:--</div>
     
-    <div class="label"><span id="endTimeLabel"></span><span id="endTimeDisplay"></span></div>
-    
-    <div class="controls">
-      <input id="endTimeInput" type="time" placeholder="終了時刻">
-      <input id="addMinutesInput" type="number" placeholder="分追加" style="width:80px;">
-      <button id="setEndTimeBtn">セット</button>
-      <button id="hideMemoBtn">クリア</button>
+    <div class="time-container">
+      <span id="time-h" class="time-part">--</span>
+      <span class="time-colon">:</span>
+      <span id="time-m" class="time-part">--</span>
+      <span class="time-colon">:</span>
+      <span id="time-s" class="time-part">--</span>
     </div>
+    
+    <div class="label-container">
+      <span id="endTimeLabel" class="label-text"></span>
+      <span id="endTimeDisplay" class="end-time-display"></span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-container">
+      <span>サイズ</span>
+      <input id="sizeSlider" type="range" min="0.5" max="2.0" step="0.1" value="1.0">
+    </div>
+
+    <div class="toggle-switch slider-container">
+      <span>通知音</span>
+      <label class="switch">
+        <input type="checkbox" id="soundToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    
+    <button id="testSoundBtn">音のテスト</button>
+
+    <input id="endTimeInput" type="time">
+    <input id="addMinutesInput" type="number" placeholder="+分" style="width:60px;">
+    <button id="setEndTimeBtn">セット</button>
+    <button id="hideMemoBtn">クリア</button>
   </div>
 
   <script>
     (function(){
-      const timeEl = document.getElementById('time');
+      let audioCtx;
+      let audioPlayed = false;
+      
+      const timeH = document.getElementById('time-h');
+      const timeM = document.getElementById('time-m');
+      const timeS = document.getElementById('time-s');
+      
       const dateEl = document.getElementById('date');
       const endTimeDisplay = document.getElementById('endTimeDisplay');
       const endTimeLabel = document.getElementById('endTimeLabel');
@@ -74,58 +223,119 @@
       const setEndTimeBtn = document.getElementById('setEndTimeBtn');
       const hideMemoBtn = document.getElementById('hideMemoBtn');
       const fsBtn = document.getElementById('fsBtn');
+      const sizeSlider = document.getElementById('sizeSlider');
+      const soundToggle = document.getElementById('soundToggle');
+      const testSoundBtn = document.getElementById('testSoundBtn');
       const body = document.body;
+      
+      const STORAGE_KEY_SCALE = 'clockScale';
+      const STORAGE_KEY_SOUND = 'clockSoundOn';
+
+      // --- 初期化処理 ---
+
+      const savedScale = localStorage.getItem(STORAGE_KEY_SCALE);
+      if (savedScale) {
+        document.documentElement.style.setProperty('--scale', savedScale);
+        sizeSlider.value = savedScale;
+      }
+      sizeSlider.addEventListener('input', (e) => {
+        document.documentElement.style.setProperty('--scale', e.target.value);
+        localStorage.setItem(STORAGE_KEY_SCALE, e.target.value);
+      });
+
+      const savedSoundState = localStorage.getItem(STORAGE_KEY_SOUND);
+      if (savedSoundState !== null) {
+        soundToggle.checked = savedSoundState === 'true';
+      }
+      soundToggle.addEventListener('change', (e) => {
+        localStorage.setItem(STORAGE_KEY_SOUND, e.target.checked);
+      });
+      
+      // --- 音声生成関数 ---
+      
+      function playNotificationSound(isTest = false) {
+        if (!isTest && !soundToggle.checked) return;
+
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        const frequency = 600; 
+        const maxGain = 0.7;
+        // 🚨 修正箇所: 持続時間を0.8秒に延長 🚨
+        const duration = 0.8; 
+        const now = audioCtx.currentTime;
+        
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(maxGain, now + 0.05);
+        // 🚨 修正箇所: 音が完全に消えるタイミングをdurationに合わせる 🚨
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, now);
+
+        oscillator.start();
+        oscillator.stop(now + duration);
+      }
+      
+      testSoundBtn.addEventListener('click', () => {
+          playNotificationSound(true);
+      });
 
       function pad(n){ return String(n).padStart(2,'0'); }
 
       function render(now){
-        // 時刻表示
-        const h = pad(now.getHours());
-        const m = pad(now.getMinutes());
-        const s = pad(now.getSeconds());
-        timeEl.textContent = `${h}:${m}:${s}`;
+        timeH.textContent = pad(now.getHours());
+        timeM.textContent = pad(now.getMinutes());
+        timeS.textContent = pad(now.getSeconds());
         
-        // 日付表示（曜日追加）
         const dateOpt = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
         dateEl.textContent = now.toLocaleDateString('ja-JP', dateOpt);
 
-        // 終了判定ロジック
         if(endTimeInput.value){
           const [eh, em] = endTimeInput.value.split(':').map(Number);
-          // 現在時刻を「分」に換算
           const currentTotalMins = now.getHours() * 60 + now.getMinutes();
           const endTotalMins = eh * 60 + em;
 
-          // 終了時刻を過ぎているか（秒単位は厳密にせず、分が変わった瞬間に判定）
           if(currentTotalMins >= endTotalMins){
             endTimeDisplay.textContent = '終了';
             endTimeLabel.textContent = '';
-            body.classList.add('overtime'); // 赤くする
+            body.classList.add('overtime');
+
+            if(!audioPlayed){
+                playNotificationSound(false);
+                audioPlayed = true;
+            }
+
           } else {
             body.classList.remove('overtime');
+            audioPlayed = false;
           }
         } else {
-          // 入力がない場合は赤くしない
           body.classList.remove('overtime');
+          audioPlayed = false;
         }
       }
 
       function updateDisplay(){
         if(endTimeInput.value){
-          endTimeLabel.textContent = '課題終了時刻：';
-          // まだ終了判定前なので、ここでは時刻だけ出す（実際の判定はrenderで行う）
-          // もし既に過ぎていればrenderが即座に書き換えるので一瞬だけ
-          if(endTimeDisplay.textContent !== '終了') {
+          if(!body.classList.contains('overtime')){
+            endTimeLabel.textContent = '課題終了時刻';
             endTimeDisplay.textContent = endTimeInput.value;
           }
         } else {
           endTimeLabel.textContent = '';
           endTimeDisplay.textContent = '';
           body.classList.remove('overtime');
+          audioPlayed = false;
         }
       }
 
-      // セットボタン（現在時刻 + N分）
       setEndTimeBtn.addEventListener('click', ()=>{
         const addMinutes = parseInt(addMinutesInput.value);
         if(!isNaN(addMinutes)){
@@ -133,24 +343,23 @@
           now.setMinutes(now.getMinutes() + addMinutes);
           endTimeInput.value = pad(now.getHours()) + ':' + pad(now.getMinutes());
         }
+        body.classList.remove('overtime');
+        audioPlayed = false;
         updateDisplay();
-        // 即座に反映させるためにrenderを一回呼ぶ
         render(new Date());
       });
 
-      // 入力欄の手動変更
       endTimeInput.addEventListener('input', updateDisplay);
 
-      // クリアボタン（要望の修正箇所）
       hideMemoBtn.addEventListener('click', ()=>{ 
         endTimeDisplay.textContent = '';
         endTimeLabel.textContent = '';
-        endTimeInput.value = ''; // 入力欄を空にする
-        addMinutesInput.value = ''; // 追加分も空にする
-        body.classList.remove('overtime'); // 色も戻す
+        endTimeInput.value = '';
+        addMinutesInput.value = '';
+        body.classList.remove('overtime');
+        audioPlayed = false;
       });
 
-      // 全画面ボタン
       fsBtn.addEventListener('click', ()=>{
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen();
@@ -163,12 +372,10 @@
 
       function startClock(){
         render(new Date());
-        const ms = new Date().getMilliseconds();
-        const delay = 1000 - ms;
         setTimeout(()=>{
           render(new Date());
           setInterval(()=>render(new Date()), 1000);
-        }, delay);
+        }, 1000 - new Date().getMilliseconds());
       }
 
       startClock();
