@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sinカーブあにめーしょん</title>
+<style>
+  body { margin: 0; background: #f7f7f7; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+  canvas { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+  #ui-container { position: absolute; bottom: 20px; width: 90%; max-width: 500px; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px; z-index: 10; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #speedSlider { flex-grow: 1; cursor: pointer; }
+  label { font-size: 13px; font-weight: bold; color: #555; }
+  button { background: #eee; border: none; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+  .mode-selector { font-size: 13px; display: flex; gap: 10px; background: #f0f0f0; padding: 5px 15px; border-radius: 20px; }
+</style>
+</head>
+<body>
+
+<div id="ui-container">
+  <div class="row">
+    <div class="mode-selector">
+      <label><input type="radio" name="mode" value="sin" checked> sinのみ</label>
+      <label><input type="radio" name="mode" value="both"> sin, cos 両方</label>
+    </div>
+    <button id="pauseBtn">停止/再生</button>
+  </div>
+  <div class="row">
+    <label>速度</label>
+    <input type="range" id="speedSlider" min="0" max="100" value="30">
+  </div>
+  <div class="row">
+    <label>角度:</label>
+    <button onclick="jumpTo(0)">0°</button>
+    <button onclick="jumpTo(90)">90°</button>
+    <button onclick="jumpTo(180)">180°</button>
+    <button onclick="jumpTo(270)">270°</button>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const speedSlider = document.getElementById("speedSlider");
+const pauseBtn = document.getElementById("pauseBtn");
+const modeInputs = document.getElementsByName("mode");
+
+let cx, cy, R, waveX, waveLength;
+let width, height;
+
+let t = 0;
+let sinWave = [];
+let cosWave = [];
+let tHistory = []; 
+let lastSpeed = 30;
+
+function jumpTo(deg) {
+  t = deg * (Math.PI / 180);
+  sinWave = []; cosWave = []; tHistory = [];
+}
+
+pauseBtn.onclick = () => {
+  if (speedSlider.value > 0) { lastSpeed = speedSlider.value; speedSlider.value = 0; }
+  else { speedSlider.value = lastSpeed; }
+};
+
+function resize() {
+  width = window.innerWidth; height = window.innerHeight;
+  canvas.width = width; canvas.height = height;
+  cx = width * 0.25; cy = height / 2;
+  R = Math.min(width * 0.12, 110); if (R < 50) R = 50;
+  waveX = cx + R + 70;
+  waveLength = width - waveX - 20;
+  sinWave = []; cosWave = []; tHistory = [];
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const currentSpeed = parseFloat(speedSlider.value) * 0.001;
+
+  let mode = "sin";
+  modeInputs.forEach(input => { if(input.checked) mode = input.value; });
+  const showCos = mode === "both";
+
+  // 1. 背景グリッド
+  ctx.strokeStyle = "#ccc";
+  ctx.lineWidth = 1;
+  ctx.font = "10px Arial";
+  ctx.fillStyle = "#999";
+  [-1, -0.5, 0, 0.5, 1].forEach(val => {
+    const y = cy - (val * R);
+    ctx.beginPath();
+    ctx.moveTo(waveX - 5, y); ctx.lineTo(waveX + waveLength, y);
+    ctx.globalAlpha = 0.1; ctx.stroke(); ctx.globalAlpha = 1.0;
+    ctx.textAlign = "right";
+    ctx.fillText(val.toFixed(1), waveX - 8, y + 3);
+  });
+
+  // 2. X軸角度ラベル
+  ctx.textAlign = "center";
+  for (let i = 0; i < tHistory.length; i++) {
+    const angleDegTotal = (tHistory[i] * 180 / Math.PI);
+    if (i > 0) {
+      const prevDegTotal = (tHistory[i-1] * 180 / Math.PI);
+      const step = 90;
+      if (Math.floor(angleDegTotal / step) !== Math.floor(prevDegTotal / step)) {
+        const x = waveX + i;
+        let labelText = ((Math.round(angleDegTotal / step) * step % 360) + 360) % 360;
+        ctx.beginPath();
+        ctx.moveTo(x, cy - R); ctx.lineTo(x, cy + R);
+        ctx.strokeStyle = "#eee"; ctx.stroke();
+        ctx.fillStyle = "#aaa";
+        ctx.fillText(labelText + "°", x, cy + R + 20);
+      }
+    }
+  }
+
+  const sinVal = Math.sin(t);
+  const cosVal = Math.cos(t);
+  const rPx = cx + R * cosVal;
+  const rPy = cy - R * sinVal;
+  const gPx = cx + R * Math.cos(t + Math.PI / 2);
+  const gPy = cy - R * Math.sin(t + Math.PI / 2);
+
+  // 円の軸
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+  ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+  ctx.strokeStyle = "#ccc"; ctx.stroke();
+
+  // 3. sin描画
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath(); ctx.moveTo(rPx, rPy); ctx.lineTo(waveX, rPy);
+  ctx.strokeStyle = "red"; ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(rPx, rPy);
+  ctx.stroke();
+  ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(rPx, rPy, 5, 0, Math.PI * 2); ctx.fill();
+
+  // 4. cos描画
+  if (showCos) {
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(gPx, gPy); ctx.lineTo(waveX, gPy);
+    ctx.strokeStyle = "green"; ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(rPx, cy);
+    ctx.strokeStyle = "green"; ctx.lineWidth = R * 0.08; ctx.globalAlpha = 0.2; ctx.stroke();
+    ctx.globalAlpha = 1.0; ctx.lineWidth = 1;
+    ctx.fillStyle = "green"; ctx.beginPath(); ctx.arc(gPx, gPy, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 5. 波の更新
+  if (currentSpeed > 0) {
+    sinWave.unshift(rPy); cosWave.unshift(gPy); tHistory.unshift(t);
+    if (sinWave.length > waveLength + 10) { sinWave.pop(); cosWave.pop(); tHistory.pop(); }
+  }
+
+  const drawWave = (data, color) => {
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) { if (i < waveLength) ctx.lineTo(waveX + i, data[i]); }
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+  };
+  drawWave(sinWave, "red");
+  if (showCos) drawWave(cosWave, "green");
+
+  // 6. テキスト表示 (レスポンシブ配置)
+  const fontSize = Math.max(12, width / 45);
+  const displayDegree = ((t * 180 / Math.PI % 360 + 360) % 360).toFixed(1);
+
+  ctx.textAlign = "left";
+  ctx.font = `bold ${fontSize * 1.2}px Arial`;
+  ctx.fillStyle = "#333";
+  ctx.fillText(`θ = ${displayDegree}°`, cx - R, cy + R + 40);
+
+  // 波エリアの幅を計算し、ラベルの位置を配分
+  const labelY = cy - R - 15;
+  ctx.font = `bold ${fontSize}px Arial`;
+  
+  // sinラベル: 波エリアの開始位置
+  ctx.fillStyle = "red";
+  ctx.fillText(`sinθ: ${sinVal.toFixed(2)}`, waveX, labelY);
+  
+  // cosラベル: 波エリアの幅の40%くらいの位置に配置（重なり防止）
+  if (showCos) {
+    ctx.fillStyle = "green";
+    const cosLabelX = waveX + Math.max(160, waveLength * 0.35);
+    ctx.fillText(`cosθ: ${cosVal.toFixed(2)}`, cosLabelX, labelY);
+  }
+
+  t += currentSpeed;
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+
+</body>
+</html>
