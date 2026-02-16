@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>さむねエディタ</title>
+    <style>
+        :root { --primary: #ff0000; --bg: #f8f9fa; --card: #ffffff; }
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; background: var(--bg); color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: var(--card); padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 1000px; width: 100%; }
+        h1 { color: var(--primary); text-align: center; margin-top: 0; font-size: 1.6rem; letter-spacing: 1px; }
+        
+        .editor-layout { display: flex; flex-direction: row; gap: 20px; flex-wrap: wrap; }
+        .preview-pane { flex: 1; min-width: 320px; }
+        .canvas-area { background: #eee; border-radius: 8px; overflow: hidden; border: 1px solid #ccc; line-height: 0; }
+        canvas { width: 100% !important; height: auto !important; cursor: move; }
+        
+        .controls { width: 320px; display: flex; flex-direction: column; gap: 12px; }
+        @media (max-width: 800px) { .controls { width: 100%; } }
+        
+        .control-group { background: #f1f3f5; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; }
+        label { font-weight: bold; font-size: 0.75rem; margin-bottom: 6px; display: block; color: #555; }
+        
+        input[type="text"], input[type="number"], input[type="file"], select { 
+            width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9rem;
+        }
+        
+        /* チェックボックスのスタイル */
+        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; margin-bottom: 10px; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+
+        .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; font-size: 1.1rem; transition: 0.3s; }
+        .btn-primary { background: var(--primary); color: white; margin-top: 10px; }
+        .btn-primary:hover { background: #cc0000; }
+        
+        .status-bar { margin-top: 15px; display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #555; }
+        .warning { color: #d94111; }
+        .hint { font-size: 0.75rem; color: #888; margin: 8px 0; text-align: center; }
+        .row { display: flex; gap: 10px; margin-top: 5px; }
+        .flex-1 { flex: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>さむねエディタ</h1>
+    <div class="editor-layout">
+        <div class="preview-pane">
+            <div class="canvas-area"><canvas id="mainCanvas"></canvas></div>
+            <p class="hint">💡 文字をドラッグして位置を移動できます</p>
+            <div class="status-bar">
+                <span id="fileSize">出力サイズ: - MB</span>
+                <span id="sizeWarning" class="warning" style="display:none;">⚠️ 2MBを超えています</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>1. 背景画像を選択</label>
+                <input type="file" id="upload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>2. テキストの設定</label>
+                <input type="text" id="textInput" placeholder="表示する文字を入力してください">
+                <div class="row">
+                    <div class="flex-1"><label>文字色</label><input type="color" id="textColor" value="#ffffff"></div>
+                    <div class="flex-1"><label>サイズ(px)</label><input type="number" id="textSize" value="130"></div>
+                </div>
+                <label style="margin-top:10px;">文字背景の濃さ（座布団）</label>
+                <input type="range" id="bgOpacity" min="0" max="1" step="0.1" value="0.5">
+            </div>
+
+            <div class="control-group">
+                <label>3. 外枠の設定</label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="showBorder" checked> 外枠を表示する
+                </label>
+                <div class="row">
+                    <div class="flex-1"><label>枠の色</label><input type="color" id="borderColor" value="#2e4d3d"></div>
+                    <div class="flex-1"><label>枠の太さ(px)</label><input type="number" id="borderWidth" value="45" min="0" max="300"></div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>4. フィルターと書き出し品質</label>
+                <label style="font-weight:normal;">明るさ調整</label>
+                <input type="range" id="brightness" min="50" max="150" value="105">
+                <label style="font-weight:normal; margin-top:10px;">圧縮品質</label>
+                <input type="range" id="quality" min="0.1" max="1.0" step="0.05" value="0.8">
+            </div>
+
+            <a id="downloadLink" class="btn btn-primary">画像を保存する</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const inputIds = ['upload', 'textInput', 'textColor', 'textSize', 'bgOpacity', 'brightness', 'borderColor', 'borderWidth', 'quality', 'showBorder'];
+    const el = {};
+    inputIds.forEach(id => el[id] = document.getElementById(id));
+    
+    let img = new Image();
+    let textPos = { x: 640, y: 550 };
+    let isDragging = false;
+
+    function render() {
+        if (!img.src) return;
+        const w = 1280, h = 720;
+        canvas.width = w; canvas.height = h;
+
+        const targetAspect = w / h;
+        const imgAspect = img.width / img.height;
+        let sX, sY, sW, sH;
+        if (imgAspect > targetAspect) {
+            sH = img.height; sW = img.height * targetAspect;
+            sX = (img.width - sW) / 2; sY = 0;
+        } else {
+            sW = img.width; sH = img.width / targetAspect;
+            sX = 0; sY = (img.height - sH) / 2;
+        }
+
+        ctx.filter = `brightness(${el.brightness.value}%)`;
+        ctx.drawImage(img, sX, sY, sW, sH, 0, 0, w, h);
+        ctx.filter = 'none';
+
+        // --- 外枠描画（チェックボックスがONの時のみ） ---
+        if (el.showBorder.checked) {
+            const bWidth = parseInt(el.borderWidth.value) || 0;
+            if (bWidth > 0) {
+                ctx.strokeStyle = el.borderColor.value;
+                ctx.lineWidth = bWidth;
+                ctx.strokeRect(0, 0, w, h);
+            }
+        }
+
+        const text = el.textInput.value;
+        if (text) {
+            const size = parseInt(el.textSize.value) || 100;
+            ctx.font = `bold ${size}px sans-serif`;
+            const tw = ctx.measureText(text).width;
+            
+            if (el.bgOpacity.value > 0) {
+                ctx.fillStyle = `rgba(0,0,0,${el.bgOpacity.value})`;
+                ctx.fillRect(textPos.x - tw/2 - 25, textPos.y - size/2 - 15, tw + 50, size + 30);
+            }
+
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.strokeStyle = 'black'; ctx.lineWidth = size / 7; ctx.lineJoin = 'round';
+            ctx.strokeText(text, textPos.x, textPos.y);
+            ctx.fillStyle = el.textColor.value;
+            ctx.fillText(text, textPos.x, textPos.y);
+        }
+        updateSize();
+    }
+
+    function updateSize() {
+        const url = canvas.toDataURL('image/jpeg', parseFloat(el.quality.value));
+        document.getElementById('downloadLink').href = url;
+        document.getElementById('downloadLink').download = `thumbnail.jpg`;
+        const size = Math.round((url.length - 814) * 0.75) / (1024 * 1024);
+        document.getElementById('fileSize').innerText = `出力サイズ: ${size.toFixed(2)} MB / 2.00 MB`;
+        document.getElementById('sizeWarning').style.display = size > 2 ? 'block' : 'none';
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX || (e.touches && e.touches[0].clientX);
+        const cy = e.clientY || (e.touches && e.touches[0].clientY);
+        return {
+            x: (cx - rect.left) * (canvas.width / rect.width),
+            y: (cy - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    canvas.addEventListener('mousedown', () => isDragging = true);
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', (e) => { if (isDragging && img.src) { textPos = getPos(e); render(); } });
+    canvas.addEventListener('touchstart', (e) => { isDragging = true; e.preventDefault(); }, {passive:false});
+    window.addEventListener('touchend', () => isDragging = false);
+    window.addEventListener('touchmove', (e) => { if (isDragging) { textPos = getPos(e); render(); e.preventDefault(); } }, {passive:false});
+
+    el.upload.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { img.src = ev.target.result; img.onload = render; };
+        reader.readAsDataURL(file);
+    };
+
+    inputIds.slice(1).forEach(id => {
+        el[id].oninput = render;
+        // チェックボックス用
+        if (el[id].type === 'checkbox') el[id].onchange = render;
+    });
+</script>
+</body>
+</html>
