@@ -13,8 +13,8 @@
         
         .editor-layout { display: flex; flex-direction: row; gap: 20px; flex-wrap: wrap; }
         .preview-pane { flex: 1; min-width: 320px; }
-        .canvas-area { background: #eee; border-radius: 8px; overflow: hidden; border: 1px solid #ccc; line-height: 0; }
-        canvas { width: 100% !important; height: auto !important; cursor: move; }
+        .canvas-area { background: #eee; border-radius: 8px; overflow: hidden; border: 1px solid #ccc; line-height: 0; display: flex; align-items: center; justify-content: center; min-height: 400px;}
+        canvas { max-width: 100%; height: auto !important; cursor: move; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
         
         .controls { width: 320px; display: flex; flex-direction: column; gap: 12px; }
         @media (max-width: 800px) { .controls { width: 100%; } }
@@ -26,7 +26,10 @@
             width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9rem;
         }
         
-        /* チェックボックスのスタイル */
+        .toggle-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .toggle-btn { flex: 1; padding: 10px; background: #ddd; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
+        .toggle-btn.active { background: #333; color: white; }
+
         .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; margin-bottom: 10px; }
         input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
@@ -35,7 +38,6 @@
         .btn-primary:hover { background: #cc0000; }
         
         .status-bar { margin-top: 15px; display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; color: #555; }
-        .warning { color: #d94111; }
         .hint { font-size: 0.75rem; color: #888; margin: 8px 0; text-align: center; }
         .row { display: flex; gap: 10px; margin-top: 5px; }
         .flex-1 { flex: 1; }
@@ -50,14 +52,18 @@
             <div class="canvas-area"><canvas id="mainCanvas"></canvas></div>
             <p class="hint">💡 文字をドラッグして位置を移動できます</p>
             <div class="status-bar">
+                <span id="canvasInfo">サイズ: 1280 x 720</span>
                 <span id="fileSize">出力サイズ: - MB</span>
-                <span id="sizeWarning" class="warning" style="display:none;">⚠️ 2MBを超えています</span>
             </div>
         </div>
         
         <div class="controls">
             <div class="control-group">
-                <label>1. 背景画像を選択</label>
+                <label>1. サイズを選択</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="modeYT">YouTube (16:9)</button>
+                    <button class="toggle-btn" id="modeNote">note (1.91:1)</button>
+                </div>
                 <input type="file" id="upload" accept="image/*">
             </div>
 
@@ -66,7 +72,7 @@
                 <input type="text" id="textInput" placeholder="表示する文字を入力してください">
                 <div class="row">
                     <div class="flex-1"><label>文字色</label><input type="color" id="textColor" value="#ffffff"></div>
-                    <div class="flex-1"><label>サイズ(px)</label><input type="number" id="textSize" value="130"></div>
+                    <div class="flex-1"><label>サイズ(px)</label><input type="number" id="textSize" value="200"></div>
                 </div>
                 <label style="margin-top:10px;">文字背景の濃さ（座布団）</label>
                 <input type="range" id="bgOpacity" min="0" max="1" step="0.1" value="0.5">
@@ -84,7 +90,7 @@
             </div>
 
             <div class="control-group">
-                <label>4. フィルターと書き出し品質</label>
+                <label>4. フィルターと品質</label>
                 <label style="font-weight:normal;">明るさ調整</label>
                 <input type="range" id="brightness" min="50" max="150" value="105">
                 <label style="font-weight:normal; margin-top:10px;">圧縮品質</label>
@@ -104,13 +110,24 @@
     inputIds.forEach(id => el[id] = document.getElementById(id));
     
     let img = new Image();
-    let textPos = { x: 640, y: 550 };
+    // 文字の初期位置をキャンバスの中央（YouTube比率ベース）に設定
+    let textPos = { x: 640, y: 360 };
     let isDragging = false;
+    let canvasMode = 'YT'; 
 
     function render() {
         if (!img.src) return;
-        const w = 1280, h = 720;
-        canvas.width = w; canvas.height = h;
+
+        let w, h;
+        if (canvasMode === 'YT') {
+            w = 1280; h = 720; 
+            document.getElementById('canvasInfo').innerText = "サイズ: 1280 x 720 (YouTube)";
+        } else {
+            w = 1280; h = 670; 
+            document.getElementById('canvasInfo').innerText = "サイズ: 1280 x 670 (note)";
+        }
+        canvas.width = w;
+        canvas.height = h;
 
         const targetAspect = w / h;
         const imgAspect = img.width / img.height;
@@ -127,7 +144,6 @@
         ctx.drawImage(img, sX, sY, sW, sH, 0, 0, w, h);
         ctx.filter = 'none';
 
-        // --- 外枠描画（チェックボックスがONの時のみ） ---
         if (el.showBorder.checked) {
             const bWidth = parseInt(el.borderWidth.value) || 0;
             if (bWidth > 0) {
@@ -160,11 +176,24 @@
     function updateSize() {
         const url = canvas.toDataURL('image/jpeg', parseFloat(el.quality.value));
         document.getElementById('downloadLink').href = url;
-        document.getElementById('downloadLink').download = `thumbnail.jpg`;
+        document.getElementById('downloadLink').download = `thumbnail_${canvasMode}.jpg`;
         const size = Math.round((url.length - 814) * 0.75) / (1024 * 1024);
         document.getElementById('fileSize').innerText = `出力サイズ: ${size.toFixed(2)} MB / 2.00 MB`;
-        document.getElementById('sizeWarning').style.display = size > 2 ? 'block' : 'none';
     }
+
+    document.getElementById('modeYT').onclick = () => {
+        canvasMode = 'YT';
+        document.getElementById('modeYT').classList.add('active');
+        document.getElementById('modeNote').classList.remove('active');
+        // YouTubeモードの時は文字をキャンバス中央に調整（移動させていない場合のみなど複雑にせず、再描画）
+        render();
+    };
+    document.getElementById('modeNote').onclick = () => {
+        canvasMode = 'Note';
+        document.getElementById('modeNote').classList.add('active');
+        document.getElementById('modeYT').classList.remove('active');
+        render();
+    };
 
     function getPos(e) {
         const rect = canvas.getBoundingClientRect();
@@ -193,7 +222,6 @@
 
     inputIds.slice(1).forEach(id => {
         el[id].oninput = render;
-        // チェックボックス用
         if (el[id].type === 'checkbox') el[id].onchange = render;
     });
 </script>
