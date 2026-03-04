@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ボードゲームのスコアを簡単に記録・共有できる非公式のWebツールです。オンラインでのプレイ進行に便利です。">
+    <title>Herd Score Manager (Fan Project)</title>
+    <style>
+        :root { --primary: #5865F2; --primary-hover: #4752C4; --success: #2ecc71; --danger: #ff4d4d; --gray: #f4f7f9; --dark: #2c2f33; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 15px 10px; background: var(--gray); color: #333; }
+        .container { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .container { grid-template-columns: 350px 1fr; } .full-width { grid-column: 1 / -1; } }
+        
+        /* ヘッダー・フッター */
+        .site-header { text-align: center; margin-bottom: 20px; }
+        .site-header h1 { font-size: 1.6em; margin: 0; color: var(--primary); }
+        .site-header p { font-size: 0.85em; color: #666; margin: 5px 0 0; }
+        .site-footer { text-align: center; margin-top: 30px; padding: 20px; font-size: 0.8em; color: #888; border-top: 1px solid #ddd; line-height: 1.5; }
+        
+        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { font-size: 1.15em; margin-top: 0; border-left: 5px solid var(--primary); padding-left: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* フォーム類 */
+        .input-group { display: flex; gap: 8px; }
+        input[type="text"], input[type="number"], select { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; transition: 0.2s; outline: none; }
+        input[type="text"]:focus, select:focus { border-color: var(--primary); }
+        
+        /* ボタン類 */
+        button { border: none; border-radius: 8px; padding: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        button:active { transform: scale(0.98); }
+        .btn-add { background: var(--success); color: white; padding: 0 20px; }
+        .btn-main { background: var(--primary); color: white; width: 100%; font-size: 1.1em; margin-top: 15px; padding: 15px; box-shadow: 0 4px 0 #3b45a6; }
+        .btn-main:active { box-shadow: 0 0 0 #3b45a6; transform: translateY(4px); }
+        .btn-undo { background: #f0f2f5; color: #666; width: 100%; margin-top: 15px; }
+        .btn-copy { background: #4caf50; color: white; width: 100%; font-size: 1.1em; }
+        .btn-reset { background: #ff9800; color: white; width: auto; font-size: 0.8em; padding: 5px 10px; border-radius: 6px; }
+
+        /* プレイヤータイル */
+        .player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin: 15px 0; }
+        .player-tile { border: 2px solid #eee; border-radius: 10px; padding: 15px 5px; text-align: center; cursor: pointer; background: #fff; font-size: 1em; font-weight: bold; color: #555; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; }
+        .player-tile.selected { border-color: var(--success); background: #eafff0; color: var(--success); transform: scale(1.05); box-shadow: 0 4px 8px rgba(46,204,113,0.2); }
+
+        .player-tag { display: inline-flex; align-items: center; background: #f0f2f5; padding: 6px 12px; border-radius: 20px; margin: 4px; font-size: 0.9em; font-weight: bold; }
+        .del-btn { margin-left: 8px; color: #aaa; cursor: pointer; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: #fff; }
+        .del-btn:hover { color: white; background: var(--danger); }
+
+        /* 出力エリア */
+        textarea { width: 100%; height: 200px; box-sizing: border-box; border-radius: 8px; border: 2px solid #eee; padding: 15px; margin-bottom: 10px; font-family: monospace; line-height: 1.5; font-size: 14px; background: #fafafa; resize: none; outline: none; }
+        
+        /* 履歴テーブル */
+        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; background: white; }
+        th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: center; min-width: 40px; }
+        th { background: #f8f9fa; font-weight: bold; color: #555; }
+        tr:last-child td { border-bottom: none; }
+
+        /* トースト通知 */
+        #toast { position: fixed; bottom: -50px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; transition: bottom 0.3s; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); pointer-events: none; }
+        #toast.show { bottom: 30px; }
+        
+        .setting-row { display: flex; align-items: center; gap: 10px; font-size: 0.9em; color: #666; margin-bottom: 10px; }
+        .setting-row input { width: 60px; padding: 6px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div id="toast">コピーしました！</div>
+
+<header class="site-header">
+    <h1>🐄 Herd Score Manager</h1>
+    <p>オンラインプレイ用 スコア管理ツール (非公式)</p>
+</header>
+
+<div class="container">
+    <div class="card">
+        <h2>👥 参加者登録</h2>
+        <div class="input-group">
+            <input type="text" id="newName" placeholder="名前を入力" onkeydown="if(event.key==='Enter')addPlayer()">
+            <button class="btn-add" onclick="addPlayer()">追加</button>
+        </div>
+        <div id="playerList" style="margin-top:15px"></div>
+    </div>
+
+    <div class="card">
+        <h2>🐄 第<span id="roundNum">1</span>問：集計</h2>
+        
+        <div style="font-size: 0.85em; color: #888; margin-bottom: 10px;">👇 多数派に入った人をタップ</div>
+        <div id="scoringArea" class="player-grid"></div>
+        
+        <label style="font-weight:bold; font-size: 0.9em; display:block; margin-top:20px;">📍 ピンクの牛の移動先:</label>
+        <select id="cowSelect"></select>
+        
+        <button class="btn-main" onclick="generateResult()">結果を確定 ＆ ログ生成</button>
+        <button class="btn-undo" onclick="undoLastRound()">↩ 1つ前の入力ミスを消す</button>
+    </div>
+
+    <div class="card full-width">
+        <h2>📋 現在の状況（シェア用）</h2>
+        <div class="setting-row">
+            <label>🎯 目標点数 (この点数で優勝):</label>
+            <input type="number" id="targetScore" value="8" min="1" max="99">
+        </div>
+        <textarea id="output" readonly placeholder="結果を確定するとここに文章が生成されます"></textarea>
+        <button class="btn-copy" onclick="copyToClipboard()">📋 テキストをコピーする</button>
+    </div>
+
+    <div class="card full-width">
+        <h2>
+            📈 スコア履歴
+            <button class="btn-reset" onclick="resetGame()">🔄 次のゲームへ</button>
+        </h2>
+        <div class="table-wrapper">
+            <table id="historyTable">
+                <thead><tr id="historyHead"><th>R</th></tr></thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<footer class="site-footer">
+    <p>※本ツールはファン作成の非公式プロジェクトであり、実際のボードゲームの販売元・権利元とは一切関係ありません。</p>
+    <p>※入力されたデータはブラウザ上にのみ一時保存され、外部サーバーには送信されません。ページを再読み込みするとデータはリセットされます。</p>
+</footer>
+
+<script>
+    let players = [];
+    let round = 1;
+    let cowHolder = "なし";
+    let history = []; 
+
+    // ページから離れようとした時の警告（データ消失防止）
+    window.addEventListener('beforeunload', function (e) {
+        if (players.length > 0 || history.length > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function addPlayer() {
+        const input = document.getElementById('newName');
+        const name = input.value.trim();
+        if (name && !players.find(p => p.name === name)) {
+            players.push({ name: name });
+            updateUI();
+            input.value = "";
+            input.focus();
+        }
+    }
+
+    function removePlayer(name) {
+        if(confirm(`「${name}」を削除しますか？`)) {
+            players = players.filter(p => p.name !== name);
+            history = []; round = 1; updateUI();
+        }
+    }
+
+    function resetGame() {
+        if(confirm("メンバーを残したまま、スコアと履歴をリセットして次のゲームを始めますか？")) {
+            history = [];
+            round = 1;
+            cowHolder = "なし";
+            document.getElementById('output').value = "";
+            updateUI();
+            showToast("リセットしました！");
+        }
+    }
+
+    function updateUI() {
+        const list = document.getElementById('playerList');
+        const scoringArea = document.getElementById('scoringArea');
+        const cowSelect = document.getElementById('cowSelect');
+        document.getElementById('roundNum').innerText = round;
+
+        list.innerHTML = "";
+        scoringArea.innerHTML = "";
+        cowSelect.innerHTML = '<option value="なし">なし</option>';
+
+        players.forEach(p => {
+            list.innerHTML += `<span class="player-tag">${p.name}<span class="del-btn" onclick="removePlayer('${p.name}')">×</span></span>`;
+            scoringArea.innerHTML += `<div class="player-tile" id="tile-${p.name}" onclick="toggleTile('${p.name}')"><input type="checkbox" class="win-check" value="${p.name}" style="display:none">${p.name}</div>`;
+            cowSelect.innerHTML += `<option value="${p.name}" ${p.name === cowHolder ? 'selected' : ''}>${p.name}</option>`;
+        });
+        refreshHistoryTable();
+    }
+
+    function toggleTile(name) {
+        const tile = document.getElementById('tile-' + name);
+        const cb = tile.querySelector('input');
+        cb.checked = !cb.checked;
+        tile.classList.toggle('selected', cb.checked);
+    }
+
+    function generateResult() {
+        if (players.length === 0) { showToast("参加者を登録してください"); return; }
+        const winners = Array.from(document.querySelectorAll('.win-check:checked')).map(el => el.value);
+        const newCow = document.getElementById('cowSelect').value;
+        history.push({ round: round, winners: winners, prevCow: cowHolder, currentCow: newCow });
+        cowHolder = newCow;
+        round++;
+        updateUI();
+        generateText(winners);
+    }
+
+    function undoLastRound() {
+        if (history.length === 0) return;
+        const last = history.pop();
+        round = last.round;
+        cowHolder = last.prevCow;
+        updateUI();
+        showToast("1回分取り消しました");
+    }
+
+    function refreshHistoryTable() {
+        const head = document.getElementById('historyHead');
+        const body = document.getElementById('historyBody');
+        if(players.length === 0) { head.innerHTML = "<th>R</th>"; body.innerHTML = ""; return; }
+        
+        head.innerHTML = "<th>R</th>" + players.map(p => `<th>${p.name.substring(0,3)}</th>`).join("");
+        body.innerHTML = "";
+        let currentScores = {};
+        players.forEach(p => currentScores[p.name] = 0);
+        history.forEach(h => {
+            let row = `<tr><td style="color:#888">${h.round}</td>`;
+            players.forEach(p => {
+                if (h.winners.includes(p.name)) { currentScores[p.name] += 1; row += `<td style="color:var(--success); font-weight:bold; font-size:1.2em">◯</td>`; }
+                else { row += `<td style="color:#ddd">-</td>`; }
+            });
+            body.innerHTML += row + "</tr>";
+        });
+        let totalRow = `<tr style="background:#f8f9fa; font-weight:bold; border-top: 2px solid #ddd"><td>累計</td>`;
+        players.forEach(p => { totalRow += `<td>${currentScores[p.name]}<span style="font-size:0.8em">${p.name === cowHolder ? '🐄' : ''}</span></td>`; });
+        body.innerHTML += totalRow + "</tr>";
+    }
+
+    function generateText(winners) {
+        let currentScores = {};
+        players.forEach(p => currentScores[p.name] = 0);
+        history.forEach(h => { players.forEach(p => { if (h.winners.includes(p.name)) currentScores[p.name] += 1; }); });
+        
+        const targetScore = parseInt(document.getElementById('targetScore').value) || 8;
+        let pData = players.map(p => ({name: p.name, score: currentScores[p.name]})).sort((a,b) => b.score - a.score);
+        
+        let champions = pData.filter(p => p.score >= targetScore && p.name !== cowHolder);
+
+        let output = "";
+        if (champions.length > 0) {
+            output += `🎊🎊🎊 最終結果発表 🎊🎊🎊\n\n`;
+            output += `👑 優勝： ${champions.map(c => c.name).join(', ')} 👑\n`;
+            output += `（${targetScore}点到達！）\n\n`;
+        } else {
+            output += `┏━━ 第 ${round-1} 問：結果 ━━┓\n\n`;
+            output += ` ✅ 多数派（+1点）：\n   ${winners.join(', ') || 'なし'}\n\n`;
+            output += ` 🐄 ピンクの牛：\n   ${cowHolder}\n\n`;
+        }
+
+        output += ` ━━━━━━ 📈 SCORE ━━━━━━\n`;
+
+        let currentRank = 0;
+        let lastScore = -1;
+        pData.forEach((p, i) => {
+            if (p.score !== lastScore) { currentRank = i + 1; lastScore = p.score; }
+            let medal = "👤";
+            if (currentRank === 1) medal = "🥇";
+            else if (currentRank === 2) medal = "🥈";
+            else if (currentRank === 3) medal = "🥉";
+            
+            let cowTag = (p.name === cowHolder) ? " 🐄(あがり不可)" : "";
+            let reachTag = (p.score >= targetScore - 1 && p.name !== cowHolder && champions.length === 0) ? " 🔥(リーチ!)" : "";
+            
+            output += ` ${medal} ${p.score}点：${p.name}${cowTag}${reachTag}\n`;
+        });
+        
+        if (champions.length === 0) output += `\n┗━━━━━━━━━━━━━━━━━━┛`;
+
+        document.getElementById('output').value = output;
+    }
+
+    async function copyToClipboard() {
+        const text = document.getElementById('output');
+        if(!text.value) { showToast("コピーする文章がありません"); return; }
+        
+        try {
+            await navigator.clipboard.writeText(text.value);
+            showToast("📋 コピーしました！");
+        } catch (err) {
+            // クリップボードAPIが使えない環境へのフォールバック
+            text.select();
+            document.execCommand("copy");
+            window.getSelection().removeAllRanges();
+            showToast("📋 コピーしました！");
+        }
+    }
+</script>
+</body>
+</html>
