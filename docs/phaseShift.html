@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON CUBE - PRECOGNITION</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial Black', sans-serif; position: fixed; width: 100%; height: 100%; user-select: none; }
+        canvas { display: block; touch-action: none; cursor: pointer; }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        #score-bg { font-size: 260px; font-weight: 900; opacity: 0.15; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); z-index: -1; font-style: italic; transition: color 0.4s; }
+        #alert-text { font-size: 55px; color: #fff; text-shadow: 0 0 30px #fff; opacity: 0; position: absolute; top: 25%; font-style: italic; letter-spacing: 4px; }
+        .active-alert { opacity: 1 !important; animation: blink 0.15s infinite; }
+        #result-screen { display: none; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); width: 100%; height: 100%; position: absolute; top: 0; left: 0; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
+        #final-score { font-size: 150px; margin: 0; }
+        #restart-msg { font-size: 18px; margin-top: 50px; opacity: 0.6; letter-spacing: 4px; animation: pulse 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="score-bg">0</div>
+        <div id="alert-text">PHASE SHIFT</div>
+        <div id="result-screen">
+            <div style="color:#ff0055; font-style:italic; font-size:35px; letter-spacing:8px;">SYSTEM FAILURE</div>
+            <h1 id="final-score">0</h1>
+            <div id="restart-msg">RE-BOOT SYSTEM</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreBg = document.getElementById("score-bg");
+        const alertText = document.getElementById("alert-text");
+        const resultScreen = document.getElementById("result-screen");
+        const finalScoreEl = document.getElementById("final-score");
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const config = { 
+            baseGravity: 0.72, // 疾走感に合わせて重力微増
+            jump: -12.5, // ジャンプも少し鋭く
+            pipeWidth: 50, // 柱を極細にして疾走感アップ
+            maxGap: 430,
+            minGap: 250, // 後半はかなりシビアに
+            diff: 200,    
+            colorBlue: "#00f0ff", 
+            colorPink: "#ff00ee", 
+            baseSpeed: 16, // 初期速度アップ
+            jumpInterval: 6
+        };
+
+        let bird, pipes, particles, score, frame, currentSpeed, gravityDir, dimension, isPressing, jumpTimer, gameActive, allowRestart, shiftWall, shiftCooldown;
+        let nextPipeInfo; // 次の柱の予兆用
+
+        function resetGameState() {
+            bird = { x: canvas.width * 0.2, y: canvas.height / 2, v: 0, size: 30, visible: false };
+            pipes = []; particles = []; score = 0; frame = 0;
+            currentSpeed = config.baseSpeed;
+            gravityDir = 1; 
+            dimension = "BLUE";
+            isPressing = false; jumpTimer = 0;
+            gameActive = false; allowRestart = true;
+            shiftWall = { x: -400, active: false, reversed: false };
+            shiftCooldown = 0;
+            nextPipeInfo = null; // 予兆リセット
+            
+            scoreBg.innerText = "0";
+            scoreBg.style.color = config.colorBlue;
+            resultScreen.style.display = "none";
+        }
+
+        function init() {
+            resetGameState();
+            bird.visible = true;
+            gameActive = true; 
+            allowRestart = false;
+            precalculateNextPipe(); // 最初の予兆を計算
+        }
+
+        // 次に来る柱の位置を予め計算する関数
+        function precalculateNextPipe() {
+            const nextScore = score + pipes.length + 1;
+            
+            let currentGap = config.maxGap;
+            if (nextScore >= 10) {
+                const t = Math.min(1, (nextScore - 10) / 10);
+                currentGap = config.maxGap - (config.maxGap - config.minGap) * t;
+            }
+
+            const lastH = (nextPipeInfo) ? nextPipeInfo.top : (pipes.length > 0 ? pipes[pipes.length-1].top : canvas.height/2 - currentGap/2);
+            
+            // 安全圏を少し広めに計算して、急な動きを抑える
+            const safePadding = 150;
+            const h = Math.max(safePadding, Math.min(canvas.height - currentGap - safePadding, lastH + (Math.random()-0.5)*config.diff));
+            
+            nextPipeInfo = { top: h, gap: currentGap };
+        }
+
+        function createPipe() {
+            if (shiftCooldown > 0 || !nextPipeInfo) return;
+            
+            // 予兆情報を実際の柱として出現させる
+            pipes.push({ 
+                x: canvas.width, 
+                top: nextPipeInfo.top, 
+                gap: nextPipeInfo.gap, 
+                passed: false 
+            });
+
+            // 次の予兆を計算
+            precalculateNextPipe();
+        }
+
+        function update() {
+            particles.forEach((p, i) => { 
+                p.x += p.vx; p.y += p.vy; p.life -= 0.025; 
+                if (p.life <= 0) particles.splice(i, 1); 
+            });
+
+            if (!gameActive) return;
+
+            const targetDim = (Math.floor(score / 5) % 2 === 0) ? "BLUE" : "PINK";
+
+            if (targetDim !== dimension) {
+                dimension = targetDim;
+                shiftWall.x = canvas.width;
+                shiftWall.active = true;
+                shiftWall.reversed = false;
+                shiftCooldown = 55; // テンポアップ
+                currentSpeed += 0.8; // 加速強化
+                scoreBg.style.color = (dimension === "BLUE") ? config.colorBlue : config.colorPink;
+                
+                if (score >= 10) {
+                    alertText.innerText = "DANGER ZONE";
+                    alertText.style.color = "#ff3333";
+                } else {
+                    alertText.innerText = "PHASE SHIFT";
+                    alertText.style.color = "#fff";
+                }
+                alertText.classList.add("active-alert");
+            }
+
+            if (shiftCooldown > 0) {
+                shiftCooldown--;
+                if (shiftCooldown === 0) alertText.classList.remove("active-alert");
+            }
+
+            if (shiftWall.active) {
+                shiftWall.x -= currentSpeed * 3.0;
+                if (shiftWall.x < bird.x && !shiftWall.reversed) {
+                    gravityDir *= -1;
+                    shiftWall.reversed = true;
+                    // シフト時の火花
+                    for(let i=0; i<25; i++) particles.push({ x: bird.x, y: bird.y, vx: (Math.random()-0.5)*35, vy: (Math.random()-0.5)*35, life: 0.6, color: "#fff" });
+                }
+                if (shiftWall.x < -400) shiftWall.active = false;
+            }
+
+            if (isPressing && jumpTimer <= 0) {
+                bird.v = config.jump * gravityDir;
+                jumpTimer = config.jumpInterval;
+            }
+            jumpTimer--;
+
+            bird.v += config.baseGravity * gravityDir;
+            bird.y += bird.v;
+            
+            // 天井・床判定を少しマイルドに（判定サイズを考慮）
+            if (bird.y > canvas.height - bird.size || bird.y < 0) die();
+
+            // 生成スパン
+            const spawnRate = Math.max(35, 60 - (score / 2));
+            if (frame % Math.floor(spawnRate) === 0 && shiftCooldown <= 0) createPipe();
+
+            pipes.forEach((p, i) => {
+                p.x -= currentSpeed;
+                // 当たり判定 (極細になったので、より「かすり」に甘く)
+                const hitboxPadding = 12;
+                if (bird.x + bird.size - hitboxPadding > p.x && bird.x + hitboxPadding < p.x + config.pipeWidth) {
+                    const inGap = (bird.y + hitboxPadding > p.top && bird.y + bird.size - hitboxPadding < p.top + p.gap);
+                    if (!inGap) die();
+                }
+                if (!p.passed && p.x < bird.x) {
+                    p.passed = true; score++; 
+                    scoreBg.innerText = score;
+                }
+                if (p.x < -config.pipeWidth) pipes.splice(i, 1);
+            });
+            frame++;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const themeColor = (dimension === "BLUE") ? config.colorBlue : config.colorPink;
+
+            // 背景グリッド
+            ctx.strokeStyle = themeColor + "22";
+            let scrollX = (frame * currentSpeed) % 150;
+            for(let i=0; i<canvas.width + 150; i+=150) {
+                ctx.beginPath(); ctx.moveTo(i - scrollX, 0); ctx.lineTo(i - scrollX, canvas.height); ctx.stroke();
+            }
+
+            // 柱（極細・強グロー）
+            pipes.forEach(p => { 
+                ctx.shadowBlur = 20; ctx.shadowColor = themeColor; ctx.fillStyle = themeColor;
+                ctx.fillRect(p.x, 0, config.pipeWidth, p.top); 
+                ctx.fillRect(p.x, p.top + p.gap, config.pipeWidth, canvas.height); 
+            });
+            ctx.shadowBlur = 0;
+
+            // 次の次元の予兆（右端に表示）
+            if (gameActive && nextPipeInfo && shiftCooldown <= 0) {
+                ctx.strokeStyle = themeColor + "44"; // うっすら表示
+                ctx.lineWidth = 2;
+                ctx.strokeRect(canvas.width - 20, 0, 15, nextPipeInfo.top);
+                ctx.strokeRect(canvas.width - 20, nextPipeInfo.top + nextPipeInfo.gap, 15, canvas.height);
+                
+                // ガイドライン
+                ctx.beginPath();
+                ctx.moveTo(canvas.width - 20, nextPipeInfo.top);
+                ctx.lineTo(canvas.width - 100, nextPipeInfo.top);
+                ctx.moveTo(canvas.width - 20, nextPipeInfo.top + nextPipeInfo.gap);
+                ctx.lineTo(canvas.width - 100, nextPipeInfo.top + nextPipeInfo.gap);
+                ctx.stroke();
+            }
+
+            // シフト演出（壁）
+            if (shiftWall.active) {
+                ctx.fillStyle = "#fff"; ctx.globalAlpha = 0.9;
+                ctx.fillRect(shiftWall.x, 0, 10, canvas.height);
+                ctx.fillStyle = themeColor; ctx.globalAlpha = 0.3;
+                ctx.fillRect(shiftWall.x + 10, 0, 200, canvas.height);
+                ctx.globalAlpha = 1;
+            }
+
+            // 疾走パーティクル
+            particles.forEach(p => { 
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color; 
+                ctx.fillRect(p.x, p.y, p.vx * -0.6, 2); // 尾を長く
+            });
+            ctx.globalAlpha = 1;
+
+            if (bird.visible) {
+                ctx.fillStyle = themeColor; ctx.shadowBlur = 35; ctx.shadowColor = themeColor;
+                ctx.fillRect(bird.x, bird.y, bird.size, bird.size);
+                
+                // インジケーター
+                ctx.fillStyle = "#fff"; ctx.shadowBlur = 0; ctx.font = "bold 22px Arial"; ctx.textAlign = "center";
+                ctx.fillText((gravityDir === 1) ? "▲" : "▼", bird.x + bird.size/2, bird.y + bird.size/1.3);
+                
+                // 常時火花
+                if(frame % 1 === 0) particles.push({ x: bird.x, y: bird.y + Math.random()*bird.size, vx: -currentSpeed*1.4, vy: (Math.random()-0.5)*3, life: 0.35, color: themeColor });
+            }
+
+            if (!gameActive && allowRestart) {
+                ctx.fillStyle = "#fff"; ctx.font = "italic 40px 'Arial Black'"; ctx.textAlign = "center";
+                ctx.shadowBlur = 20; ctx.shadowColor = themeColor;
+                ctx.fillText("READY TO OVERRIDE?", canvas.width/2, canvas.height/2);
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function die() {
+            if (!gameActive) return;
+            gameActive = false; bird.visible = false; shiftWall.active = false; alertText.classList.remove("active-alert");
+            for(let i=0; i<100; i++) particles.push({ x: bird.x + bird.size/2, y: bird.y + bird.size/2, vx: (Math.random()-0.5)*60, vy: (Math.random()-0.5)*60, life: 1.5, color: (dimension === "BLUE") ? config.colorBlue : config.colorPink });
+            if (navigator.vibrate) navigator.vibrate(200);
+            setTimeout(() => { 
+                finalScoreEl.innerText = score; 
+                finalScoreEl.style.color = (dimension === "BLUE") ? config.colorBlue : config.colorPink;
+                resultScreen.style.display = "flex"; 
+                allowRestart = true; 
+            }, 800);
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+        const handleInput = (e) => {
+            if (e.type === 'touchstart') e.preventDefault();
+            if (allowRestart) init();
+            else if (gameActive) isPressing = true;
+        };
+        const releaseInput = () => { isPressing = false; };
+
+        window.addEventListener("mousedown", handleInput);
+        window.addEventListener("mouseup", releaseInput);
+        window.addEventListener("touchstart", handleInput, { passive: false });
+        window.addEventListener("touchend", releaseInput);
+
+        resetGameState();
+        loop();
+    </script>
+</body>
+</html>
