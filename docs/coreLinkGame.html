@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>CORE LINK - Precise Edition</title>
+    <title>落ちものパズル</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root { --neon-blue: #00f2ff; --neon-pink: #ff00e5; --bg-dark: #02050c; --panel-bg: rgba(0, 20, 40, 0.8); }
@@ -51,7 +51,13 @@
         .row-top { grid-template-columns: 1fr 1.5fr 1fr; }
         .row-bottom { grid-template-columns: 1.2fr 1fr 1.2fr; }
 
-        .ctrl-btn { background: rgba(0, 40, 80, 0.4); border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 16px 0; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 18px; cursor: pointer; transition: 0.1s; -webkit-tap-highlight-color: transparent; }
+        .ctrl-btn { 
+            background: rgba(0, 40, 80, 0.4); border: 1px solid var(--neon-blue); color: var(--neon-blue); 
+            padding: 16px 0; border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-size: 18px; 
+            cursor: pointer; transition: 0.1s; -webkit-tap-highlight-color: transparent;
+            /* スマホの誤作動防止用CSS追加 */
+            touch-action: none; user-select: none; -webkit-user-select: none;
+        }
         .ctrl-btn:active { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
         .pause-btn { border-color: var(--neon-pink); color: var(--neon-pink); }
     </style>
@@ -89,7 +95,7 @@
     <div class="controls-container">
         <div class="button-row row-top">
             <button class="ctrl-btn" onmousedown="handleInput('Left')" ontouchstart="e=>{e.preventDefault(); handleInput('Left')}">◀</button>
-            <button class="ctrl-btn" onmousedown="startDrop()" ontouchstart="e=>{e.preventDefault(); startDrop()}" onmouseup="stopDrop()" ontouchend="stopDrop()">▼</button>
+            <button class="ctrl-btn" onmousedown="hardDrop()" ontouchstart="e=>{e.preventDefault(); hardDrop()}" oncontextmenu="return false;">▼</button>
             <button class="ctrl-btn" onmousedown="handleInput('Right')" ontouchstart="e=>{e.preventDefault(); handleInput('Right')}">▶</button>
         </div>
         <div class="button-row row-bottom">
@@ -107,7 +113,6 @@
  */
 const CONFIG = {
     NORMAL_FALL_SPEED: 0.8,
-    FAST_FALL_SPEED: 15.0,
     LOCK_DELAY: 500,
     FALL_ANIM_SPEED: 12,
     MATCH_COUNT: 4,
@@ -140,7 +145,7 @@ const CORE_COLORS = [null,
 let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 let visualBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 let score = 0, isProcessing = false, isPaused = false, isGameOver = false, lastTime = 0;
-let nextColors = [rand(), rand()], player = null, fastDrop = false;
+let nextColors = [rand(), rand()], player = null;
 let flashingCores = [], floatingTexts = [], shakeTimer = 0;
 let lockImpacts = []; 
 
@@ -345,9 +350,8 @@ function update(time) {
     lockImpacts = lockImpacts.filter(li => li.alpha > 0);
 
     if (!isProcessing && !isPaused && player) {
-        const speed = fastDrop ? CONFIG.FAST_FALL_SPEED : CONFIG.NORMAL_FALL_SPEED;
-        if (isValid(player.x, player.py + speed, player.rotation)) {
-            player.py += speed; player.lockTimer = 0; player.isTouching = false;
+        if (isValid(player.x, player.py + CONFIG.NORMAL_FALL_SPEED, player.rotation)) {
+            player.py += CONFIG.NORMAL_FALL_SPEED; player.lockTimer = 0; player.isTouching = false;
         } else {
             player.isTouching = true; 
             player.lockTimer += dt;
@@ -414,7 +418,7 @@ function render() {
         
         ctx.save();
         ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-        // ゴースト（着地点予測）も四捨五入で描画
+        // ゴースト（着地点予測）
         const gy1 = Math.round(ghostY / SIZE) * SIZE;
         const gp2 = getRotPos(player.x, ghostY, player.rotation);
         const gy2 = Math.round(gp2.y / SIZE) * SIZE;
@@ -458,17 +462,22 @@ function tryRotate(dir) {
     else if (isValid(player.x - 1, player.py, nextRot)) { player.x--; player.rotation = nextRot; }
 }
 
-function startDrop() { if(!isProcessing && !isPaused) fastDrop = true; }
-function stopDrop() { fastDrop = false; }
+// ハードドロップ処理
+function hardDrop() {
+    if (isProcessing || isPaused || !player) return;
+    while (isValid(player.x, player.py + 1, player.rotation)) {
+        player.py++;
+    }
+    player.lockTimer = CONFIG.LOCK_DELAY + 1; // 即座に固定
+}
 
 window.addEventListener('keydown', e => { 
     if(e.key.toLowerCase()==='p') togglePause();
     if(e.key === 'ArrowLeft') handleInput('Left');
     if(e.key === 'ArrowRight') handleInput('Right');
     if(e.key === 'ArrowUp') handleInput('RotateR');
-    if(e.key === 'ArrowDown') startDrop();
+    if(e.key === 'ArrowDown') hardDrop();
 });
-window.addEventListener('keyup', e => { if(e.key === 'ArrowDown') stopDrop(); });
 
 spawn();
 requestAnimationFrame(update);
